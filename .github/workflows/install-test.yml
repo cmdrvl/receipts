@@ -110,28 +110,124 @@ jobs:
 
       - name: Refusal paths exit with code 2
         run: |
+          echo "pack version: $(pack --version)"
+          echo "shape version: $(shape --version)"
+          echo "rvl version: $(rvl --version)"
+          # Use runner.temp for outputs to avoid /tmp → /private/tmp symlink
+          # weirdness on macOS runners.
+          TMP="${{ runner.temp }}"
+
           # Non-existent file
           set +e
-          ./skills/receipts-csv/scripts/run-receipt.sh /nope-old.csv /nope-new.csv --key x --out /tmp/r1 2>/dev/null >/dev/null
+          ./skills/receipts-csv/scripts/run-receipt.sh /nope-old.csv /nope-new.csv --key x --out "$TMP/r1" >/dev/null 2>&1
           rc=$?
           set -e
           [[ $rc -eq 2 ]] || { echo "expected exit 2 for missing file, got $rc"; exit 1; }
           echo "ok — missing file: exit 2"
 
-          # Pre-existing non-empty output dir
-          mkdir -p /tmp/already-exists
-          touch /tmp/already-exists/something
+          # Pre-existing non-empty output dir — should fail at pack seal
+          COLLISION="$TMP/already-exists"
+          mkdir -p "$COLLISION"
+          touch "$COLLISION/something"
           set +e
           ./skills/receipts-csv/scripts/run-receipt.sh \
             ./skills/receipts-csv/assets/channel-spend/agency-report.csv \
             ./skills/receipts-csv/assets/channel-spend/bank-statement.csv \
-            --key channel --out /tmp/already-exists 2>/dev/null >/dev/null
+            --key channel --out "$COLLISION" > /tmp/wrapper.out 2>&1
           rc=$?
           set -e
-          [[ $rc -eq 2 ]] || { echo "expected exit 2 for pack collision, got $rc"; exit 1; }
+          if [[ $rc -ne 2 ]]; then
+            echo "expected exit 2 for pack collision, got $rc"
+            echo "--- wrapper output ---"
+            cat /tmp/wrapper.out
+            echo "--- pack direct repro ---"
+            set +e
+            pack seal ./skills/receipts-csv/assets/channel-spend/agency-report.csv \
+              --output "$COLLISION" --no-witness
+            echo "direct rc=$?"
+            set -e
+            exit 1
+          fi
           echo "ok — pack collision: exit 2"
 
       - name: Summary
         if: success()
         run: |
           echo "::notice::receipts install + demo end-to-end OK"
+
+  smoke-windows:
+    name: install + bundled-demo end-to-end (windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PowerShell syntax check
+        run: |
+          $files = @('install.ps1',
+                     'shared/scripts/install-spine.ps1',
+                     'skills/receipts-csv/scripts/run-receipt.ps1')
+          foreach ($f in $files) {
+            $tokens = $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($f, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              Write-Error "Syntax errors in $f"
+              $errors | ForEach-Object { Write-Host $_ }
+              exit 1
+            }
+            Write-Host "ok: $f"
+          }
+
+      - name: Install spine binaries via install-spine.ps1
+        run: |
+          ./shared/scripts/install-spine.ps1
+          # The script adds to user PATH for future shells; expose in this one too
+          $env:Path = "$env:Path;$env:USERPROFILE\.cmdrvl\bin"
+          shape --version
+          rvl --version
+          pack --version
+
+      - name: Run bundled demo end-to-end
+        run: |
+          $env:Path = "$env:Path;$env:USERPROFILE\.cmdrvl\bin"
+          $out = Join-Path $env:RUNNER_TEMP "ci-receipt"
+          ./skills/receipts-csv/scripts/run-receipt.ps1 `
+            ./skills/receipts-csv/assets/channel-spend/agency-report.csv `
+            ./skills/receipts-csv/assets/channel-spend/bank-statement.csv `
+            -Key channel -Out $out -Note "ci windows smoke"
+          if (-not (Test-Path (Join-Path $out "manifest.json"))) {
+            Write-Error "manifest.json missing"
+            exit 1
+          }
+          pack verify $out --no-witness
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Refusal paths exit non-zero
+        run: |
+          $env:Path = "$env:Path;$env:USERPROFILE\.cmdrvl\bin"
+          $tmp = $env:RUNNER_TEMP
+
+          # Missing file
+          ./skills/receipts-csv/scripts/run-receipt.ps1 (Join-Path $tmp "nope-old.csv") (Join-Path $tmp "nope-new.csv") -Key x -Out (Join-Path $tmp "r1") *> $null
+          if ($LASTEXITCODE -ne 2) {
+            Write-Error "expected exit 2 for missing file, got $LASTEXITCODE"
+            exit 1
+          }
+          Write-Host "ok — missing file: exit 2"
+
+          # Pack collision: pre-existing non-empty output dir
+          $collision = Join-Path $tmp "already-exists"
+          New-Item -ItemType Directory -Force -Path $collision | Out-Null
+          New-Item -ItemType File -Force -Path (Join-Path $collision "something") | Out-Null
+          ./skills/receipts-csv/scripts/run-receipt.ps1 `
+            ./skills/receipts-csv/assets/channel-spend/agency-report.csv `
+            ./skills/receipts-csv/assets/channel-spend/bank-statement.csv `
+            -Key channel -Out $collision *> $null
+          if ($LASTEXITCODE -ne 2) {
+            Write-Error "expected exit 2 for pack collision, got $LASTEXITCODE"
+            exit 1
+          }
+          Write-Host "ok — pack collision: exit 2"

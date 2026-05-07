@@ -17,7 +17,7 @@ Both run on the same spine: `shape` (structural gate) → `rvl` (numeric verdict
 
 ## Install
 
-### One-liner (recommended)
+### macOS / Linux (bash)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/cmdrvl/receipts/main/install.sh | bash
@@ -25,12 +25,37 @@ curl -fsSL https://raw.githubusercontent.com/cmdrvl/receipts/main/install.sh | b
 
 Auto-detects every AI coding agent skill dir on your machine (`~/.claude`, `~/.codex`, `~/.gemini`, `~/.cursor`, `~/.agents`), clones the repo into a single bundle, symlinks both skills (`receipts-csv` and `receipts-flywheel`) into each detected harness's `skills/` dir, and installs the cmdrvl spine via Homebrew. Idempotent — safe to re-run for updates.
 
+Prereq: Homebrew. `install.sh` checks for `brew` and prints clear install instructions if it's missing.
+
 If you prefer not to pipe `curl` to `bash`, [read `install.sh`](install.sh) first and run it locally.
 
-**Prereq: Homebrew.** `install.sh` checks for `brew` and prints clear install instructions if it's missing. Coverage:
-- macOS (arm64 + x86_64) — install brew via the official installer
-- Linux (arm64 + x86_64) — same command, installs Linuxbrew
-- Windows — run inside WSL2 (no native Windows binaries, but Linux works)
+### Windows (PowerShell, no bash required)
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/cmdrvl/receipts/main/install.ps1 | iex
+```
+
+Native PowerShell installer — no Git Bash, no WSL2, no Cygwin needed. Downloads pinned spine binaries (`shape.exe`, `rvl.exe`, `pack.exe`) from each tool's GitHub releases into `%USERPROFILE%\.cmdrvl\bin`, adds it to your user PATH, clones the repo, and creates directory junctions (no admin / dev mode required) into each detected harness's `skills/` dir.
+
+Run the bundled demo with `run-receipt.ps1`:
+
+```powershell
+& "$env:USERPROFILE\.claude\skills\receipts-bundle\skills\receipts-csv\scripts\run-receipt.ps1" `
+  "$env:USERPROFILE\.claude\skills\receipts-bundle\skills\receipts-csv\assets\channel-spend\agency-report.csv" `
+  "$env:USERPROFILE\.claude\skills\receipts-bundle\skills\receipts-csv\assets\channel-spend\bank-statement.csv" `
+  -Key channel -Out (Join-Path $env:TEMP "my-first-receipt")
+```
+
+Prereq: [Git for Windows](https://git-scm.com/download/win) (provides `git`).
+
+### Platform coverage
+
+| Platform | Spine binaries | Install path |
+|---|---|---|
+| macOS arm64 / x86_64 | native bottles | `install.sh` (brew) |
+| Linux arm64 / x86_64 | native bottles | `install.sh` (Linuxbrew) |
+| Windows x86_64       | native `.exe`  | `install.ps1` (PowerShell) |
+| Windows ARM64        | x86_64 via emulation | `install.ps1` |
 
 ### Manual
 
