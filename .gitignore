@@ -1,0 +1,12 @@
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+node_modules/
+
+# Local test output
+/tmp-receipt/
+test-output/
