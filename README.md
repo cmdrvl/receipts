@@ -15,16 +15,51 @@ This repo hosts two free, MIT-licensed skills that wrap the [cmdrvl spine](https
 
 Both run on the same spine: `shape` (structural gate) → `rvl` (numeric verdict) → `pack seal` (content-addressed evidence pack). Every artifact has a SHA-256 identity. Every refusal is structured. `pack verify` revalidates the chain offline — no network, no catalog, no trust in the producer.
 
-## Quick start
+## Install
+
+### One-liner (recommended)
 
 ```bash
-# Install the spine (idempotent)
-shared/scripts/install-spine.sh
+curl -fsSL https://raw.githubusercontent.com/cmdrvl/receipts/main/install.sh | bash
+```
 
-# Run the headline demo on the bundled marketing-channel sample
-skills/receipts-csv/scripts/run-receipt.sh \
-  skills/receipts-csv/assets/channel-spend/agency-report.csv \
-  skills/receipts-csv/assets/channel-spend/bank-statement.csv \
+Clones into `~/.claude/skills/receipts-bundle`, symlinks both skills (`receipts-csv` and `receipts-flywheel`) into `~/.claude/skills/`, installs the cmdrvl spine via Homebrew, and prints the next-steps demo command. Idempotent — safe to re-run for updates.
+
+If you prefer not to pipe `curl` to `bash`, [read `install.sh`](install.sh) first and run it locally.
+
+### Manual
+
+```bash
+git clone https://github.com/cmdrvl/receipts.git ~/.claude/skills/receipts-bundle
+ln -s ~/.claude/skills/receipts-bundle/skills/receipts-csv      ~/.claude/skills/receipts-csv
+ln -s ~/.claude/skills/receipts-bundle/skills/receipts-flywheel ~/.claude/skills/receipts-flywheel
+~/.claude/skills/receipts-bundle/shared/scripts/install-spine.sh
+```
+
+### Privacy: keep your data out of the LLM context
+
+If you're running these inside Claude Code or Codex, install **`veil`** so your data bytes never enter the model context — only the deterministic verdicts do:
+
+```bash
+brew install cmdrvl/tap/veil
+veil install
+veil config enable-pack data.tabular
+```
+
+The skills work without veil, but the "no LLM in the chain" promise is enforced at the harness level only with veil.
+
+## Quick start
+
+After install:
+
+```bash
+# In any Claude Code session
+/receipts-csv
+
+# Or run the bundled demo directly
+~/.claude/skills/receipts-bundle/skills/receipts-csv/scripts/run-receipt.sh \
+  ~/.claude/skills/receipts-bundle/skills/receipts-csv/assets/channel-spend/agency-report.csv \
+  ~/.claude/skills/receipts-bundle/skills/receipts-csv/assets/channel-spend/bank-statement.csv \
   --key channel \
   --out /tmp/channel-spend-receipt
 ```
@@ -45,18 +80,6 @@ In about 30 seconds you'll see:
 ```
 
 The bundled sample is a marketing-channel spend reconciliation — what your agency reported vs. what actually hit the bank. `shape` confirms the files line up structurally; `rvl` finds the cells that moved; `pack seal` produces a content-addressed receipt you can keep, share, or push to a fabric. Drop the pack directory anywhere, run `pack verify`, and you can prove integrity from member hashes alone. No network, no catalog, no trust.
-
-## Privacy: keep your data out of the LLM context
-
-If you're running these skills inside Claude Code, Codex, or any agent harness, install **`veil`** to ensure your data bytes never leak into the model context. The model only sees the deterministic tool output — verdicts, hashes, paths. Your CSVs stay on disk.
-
-```bash
-brew install cmdrvl/tap/veil
-veil install
-veil config enable-pack data.tabular
-```
-
-The receipts skills work without veil — but the "no LLM in the chain" promise is aspirational without it. With veil, it's enforced at the harness level.
 
 ## Why this exists
 
