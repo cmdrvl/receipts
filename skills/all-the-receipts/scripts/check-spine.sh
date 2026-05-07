@@ -14,7 +14,7 @@ set -euo pipefail
 REQUIRED=(shape rvl pack)
 
 # Available in the spine but not strictly needed for receipts-csv. veil is
-# the privacy guard; the rest are exercised by receipts-flywheel modes
+# the privacy guard; the rest are exercised by all-the-receipts modes
 # (PDF, filings, tape) as those land.
 OPTIONAL=(veil vacuum hashbytes fingerprint profile lock canon)
 

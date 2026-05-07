@@ -8,7 +8,7 @@
 #   1. Auto-detects which AI coding agent skill dirs exist on this machine
 #      (~/.claude, ~/.codex, ~/.gemini, ~/.cursor, ~/.agents)
 #   2. Clones (or pulls) the repo into a single bundle directory
-#   3. Symlinks receipts-csv + receipts-flywheel into every detected
+#   3. Symlinks receipts-csv + all-the-receipts into every detected
 #      harness's skills/ directory — one bundle, many harnesses
 #   4. Installs the cmdrvl spine tools via Homebrew
 #   5. Prints next steps
@@ -141,10 +141,27 @@ link_skill() {
   ok "[$harness] linked $name"
 }
 
+# Clean up orphan symlinks from prior install names (rename history).
+cleanup_orphan_skill() {
+  local old="$1" harness="$2"
+  local link="$HOME/.$harness/skills/$old"
+  if [[ -L "$link" ]]; then
+    local target
+    target="$(readlink "$link")"
+    # Only remove if it points into the receipts bundle — never touch
+    # symlinks the user may have set up themselves.
+    if [[ "$target" == "$BUNDLE_DIR/skills/$old" ]]; then
+      rm "$link"
+      ok "[$harness] removed orphan symlink: $old (renamed)"
+    fi
+  fi
+}
+
 say "linking skills into ${#DETECTED[@]} detected harness(es)"
 for h in "${DETECTED[@]}"; do
-  link_skill receipts-csv     "$h"
-  link_skill receipts-flywheel "$h"
+  cleanup_orphan_skill receipts-flywheel "$h"
+  link_skill receipts-csv      "$h"
+  link_skill all-the-receipts  "$h"
 done
 
 # 5. Install spine tools (unless skipped)
@@ -152,11 +169,11 @@ if [[ "${SKIP_SPINE_INSTALL:-0}" == "1" ]]; then
   say "skipping spine install (SKIP_SPINE_INSTALL=1)"
 else
   say "installing cmdrvl spine tools via brew (idempotent)"
-  if [[ -x "$BUNDLE_DIR/shared/scripts/install-spine.sh" ]]; then
-    bash "$BUNDLE_DIR/shared/scripts/install-spine.sh"
+  if [[ -x "$BUNDLE_DIR/skills/receipts-csv/scripts/install-spine.sh" ]]; then
+    bash "$BUNDLE_DIR/skills/receipts-csv/scripts/install-spine.sh"
   else
     warn "install-spine.sh not found or not executable — skipping. Run it manually:"
-    warn "  bash $BUNDLE_DIR/shared/scripts/install-spine.sh"
+    warn "  bash $BUNDLE_DIR/skills/receipts-csv/scripts/install-spine.sh"
   fi
 fi
 
@@ -180,7 +197,7 @@ Or, in any compatible session: /receipts-csv
 
 Optional — keep CSV bytes out of the model context (privacy):
 
-  bash $BUNDLE_DIR/shared/scripts/setup-veil.sh
+  bash $BUNDLE_DIR/skills/receipts-csv/scripts/setup-veil.sh
 
 That's an interactive guided installer for veil (the cmdrvl data-exfiltration
 guard for AI coding agents). Skip it if you don't need the harness-level

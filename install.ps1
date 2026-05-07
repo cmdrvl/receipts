@@ -128,10 +128,26 @@ function Link-Skill {
     Ok "[$Harness] linked $Name"
 }
 
+# Clean up junctions/symlinks left over from prior install names (renames).
+function Cleanup-OrphanSkill {
+    param($Old, $Harness)
+    $Link = Join-Path $env:USERPROFILE ".$Harness\skills\$Old"
+    if (-not (Test-Path $Link)) { return }
+    $existing = Get-Item $Link -Force
+    if ($existing.LinkType -notin @("Junction","SymbolicLink")) { return }
+    $current = $existing.Target | Select-Object -First 1
+    $expected = Join-Path $BundleDir "skills\$Old"
+    if ($current -eq $expected) {
+        Remove-Item $Link -Force -Recurse
+        Ok "[$Harness] removed orphan link: $Old (renamed)"
+    }
+}
+
 Say "linking skills into $($Detected.Count) detected harness(es)"
 foreach ($h in $Detected) {
-    Link-Skill -Name "receipts-csv" -Harness $h
-    Link-Skill -Name "receipts-flywheel" -Harness $h
+    Cleanup-OrphanSkill -Old "receipts-flywheel" -Harness $h
+    Link-Skill -Name "receipts-csv"     -Harness $h
+    Link-Skill -Name "all-the-receipts" -Harness $h
 }
 
 # --- Spine tools (optional) ---
@@ -139,7 +155,7 @@ if ($SkipSpineInstall) {
     Say "skipping spine install (-SkipSpineInstall)"
 } else {
     Say "installing cmdrvl spine tools (shape, rvl, pack) for Windows"
-    & (Join-Path $BundleDir "shared\scripts\install-spine.ps1")
+    & (Join-Path $BundleDir "skills\receipts-csv\scripts\install-spine.ps1")
 }
 
 # --- Next steps ---

@@ -10,8 +10,8 @@ This repo hosts two free, MIT-licensed skills that wrap the [cmdrvl spine](https
 
 | Skill | Status | Use when |
 |---|---|---|
-| **[receipts-csv](skills/receipts-csv/)** | shipping | You have two CSVs and want a hash-verified receipt of what changed. |
-| **[receipts-flywheel](skills/receipts-flywheel/)** | scaffolded, expanding | The umbrella — CSV today, PDF / SEC filings / loan tapes / position files next. One skill that grows. |
+| **[receipts-csv](skills/receipts-csv/)** | shipping | You have two CSVs and want a hash-verified receipt of what changed. Focused, single-purpose. |
+| **[all-the-receipts](skills/all-the-receipts/)** | shipping (CSV mode), expanding | You want one skill that mines receipts from any pair of artifacts. CSV mode runs the same pipeline as `receipts-csv` today; PDF / SEC filings / loan tapes / position files land as flywheel-paired modes ship. |
 
 Both run on the same spine: `shape` (structural gate) → `rvl` (numeric verdict) → `pack seal` (content-addressed evidence pack). Every artifact has a SHA-256 identity. Every refusal is structured. `pack verify` revalidates the chain offline — no network, no catalog, no trust in the producer.
 
@@ -23,7 +23,7 @@ Both run on the same spine: `shape` (structural gate) → `rvl` (numeric verdict
 curl -fsSL https://raw.githubusercontent.com/cmdrvl/receipts/main/install.sh | bash
 ```
 
-Auto-detects every AI coding agent skill dir on your machine (`~/.claude`, `~/.codex`, `~/.gemini`, `~/.cursor`, `~/.agents`), clones the repo into a single bundle, symlinks both skills (`receipts-csv` and `receipts-flywheel`) into each detected harness's `skills/` dir, and installs the cmdrvl spine via Homebrew. Idempotent — safe to re-run for updates.
+Auto-detects every AI coding agent skill dir on your machine (`~/.claude`, `~/.codex`, `~/.gemini`, `~/.cursor`, `~/.agents`), clones the repo into a single bundle, symlinks both skills (`receipts-csv` and `all-the-receipts`) into each detected harness's `skills/` dir, and installs the cmdrvl spine via Homebrew. Idempotent — safe to re-run for updates.
 
 Prereq: Homebrew. `install.sh` checks for `brew` and prints clear install instructions if it's missing.
 
@@ -62,8 +62,8 @@ Prereq: [Git for Windows](https://git-scm.com/download/win) (provides `git`).
 ```bash
 git clone https://github.com/cmdrvl/receipts.git ~/.claude/skills/receipts-bundle
 ln -s ~/.claude/skills/receipts-bundle/skills/receipts-csv      ~/.claude/skills/receipts-csv
-ln -s ~/.claude/skills/receipts-bundle/skills/receipts-flywheel ~/.claude/skills/receipts-flywheel
-~/.claude/skills/receipts-bundle/shared/scripts/install-spine.sh
+ln -s ~/.claude/skills/receipts-bundle/skills/all-the-receipts  ~/.claude/skills/all-the-receipts
+~/.claude/skills/receipts-bundle/skills/receipts-csv/scripts/install-spine.sh
 ```
 
 ### Optional: keep your CSV bytes out of the model context
@@ -73,7 +73,7 @@ The skills work fine without this. It's a privacy enhancement for people who wan
 If you want it, an interactive setup script walks you through three stages — install the `veil` binary, register the agent-harness hooks, drop a conservative starter config — asking for confirmation before each:
 
 ```bash
-~/.claude/skills/receipts-bundle/shared/scripts/setup-veil.sh
+~/.claude/skills/receipts-bundle/skills/receipts-csv/scripts/setup-veil.sh
 ```
 
 Pass `--yes` to skip prompts.
@@ -122,12 +122,15 @@ The spine tools are open source individually. These skills bundle them into a wo
 ```
 receipts/
 ├── skills/
-│   ├── receipts-csv/        # the focused skill (CSV → receipt)
-│   └── receipts-flywheel/   # the umbrella (multi-domain, growing)
-├── shared/
-│   └── scripts/
-│       ├── check-spine.sh   # inventory installed spine tools
-│       └── install-spine.sh # idempotent install via cmdrvl/tap
+│   ├── receipts-csv/        # focused skill — canonical home of spine + veil scripts
+│   │   ├── scripts/         # run-receipt + check-spine + install-spine + setup-veil
+│   │   └── assets/
+│   └── all-the-receipts/    # umbrella — vendored mirror of receipts-csv scripts
+│       ├── scripts/         # mirror of receipts-csv/scripts/ (kept in sync, see AGENTS.md)
+│       └── assets/
+├── install.sh               # bash bundle installer (calls receipts-csv's install-spine.sh)
+├── install.ps1              # PowerShell bundle installer
+├── AGENTS.md                # contributor guide — sync rules, invariants
 └── README.md
 ```
 

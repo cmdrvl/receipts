@@ -1,21 +1,21 @@
 ---
-name: receipts-csv
+name: all-the-receipts
 description: >-
-  Got two CSVs? Get a sealed receipt of which numbers changed.
-  Deterministic diff with a structural compatibility gate, a numeric
-  verdict (REAL_CHANGE / NO_REAL_CHANGE / REFUSAL), and a content-
-  addressed evidence pack you can verify offline. No LLM reads your
-  data. Use when user says "did these numbers change", "diff these
-  CSVs", "csv receipt", "verifiable CSV diff", "reconcile these
-  two reports", or wants to seal a CSV comparison into a hash-verified
-  evidence pack.
+  Mine sealed, hash-verified receipts from any pair of artifacts.
+  Deterministic verdict + content-addressed evidence pack you can
+  verify offline. CSV pairs ship today; PDF, SEC filings, loan tapes,
+  and position files land as flywheel-paired modes ship. Use when
+  user says "all the receipts", "receipts everything", "mine a
+  receipt from these", "did these numbers actually change", "diff
+  these two CSVs", "reconcile these reports", or wants a sealed,
+  offline-verifiable evidence pack.
 ---
 
-# receipts-csv
+# all-the-receipts
 
-> **Got two CSVs? Get a sealed receipt of what changed.**
+> **Mine sealed receipts from any pair of artifacts.**
 >
-> Every step is a deterministic spine tool. No LLM reads your data — the model only sees verdicts, hashes, and paths. Your CSVs stay on disk.
+> Every step is a deterministic spine tool. No LLM reads your data — the model only sees verdicts, hashes, and paths. CSV mode ships today; new artifact-type modes layer in as the umbrella grows.
 
 ## What it does
 
@@ -27,19 +27,32 @@ Three deterministic tools chained together:
 
 Every artifact has a SHA-256 identity. Every refusal has a structured code. Reproducible in 30 seconds against the bundled sample.
 
+## Modes
+
+| Mode | Status | Trigger |
+|---|---|---|
+| **csv** | shipping today | Two CSV paths, or no args (runs the bundled demo) |
+| **pdf** | planned | Two PDF paths (appraisals, financial reports, term sheets) |
+| **filings** | planned | Two SEC filings, or one filing + one prior period |
+| **tape** | planned | Two loan tapes, position files, or portfolio extracts |
+
+The same spine — `shape` → `rvl` → `pack seal` — runs under each mode. Adding a mode means adding the artifact-type adapter; the receipt contract stays identical.
+
 ## When invoked (workflow for the agent)
 
 When the user invokes this skill, decide based on what they provide:
 
-1. **No arguments** — run the bundled marketing-channel sample to show the user what the receipt looks like end-to-end. Use the command in *Quick start → First time? Run the bundled demo*. Print the output and explain the verdict in one sentence.
+1. **No arguments** — run the bundled marketing-channel sample (CSV mode) to show the user what a receipt looks like end-to-end. Use the command in *Quick start → First time? Run the bundled demo*. Print the output and explain the verdict in one sentence.
 
 2. **Two CSV paths supplied** — run `scripts/run-receipt.sh <old> <new>` with their paths. Ask the user once for the key column (or use `--key` if obvious from headers); default to positional alignment only if they confirm there's no stable key. Default `--out` to a fresh tmp directory unless they specify.
 
-3. **Spine tools missing** — `shape`, `rvl`, or `pack` not on PATH → run `scripts/install-spine.sh` (or `scripts/install-spine.ps1` on Windows) first, then proceed. Do not silently skip; the receipt is the point.
+3. **Two non-CSV paths supplied** (PDF, filing, tape, etc.) — that mode hasn't shipped yet. Tell the user honestly: "csv mode ships today; <mode> is on the roadmap. Watch the repo for updates." Don't fabricate a pipeline.
 
-4. **User asks about privacy or "keep CSVs out of the model"** — point them at `scripts/setup-veil.sh`. Do not auto-run it; veil is opt-in and modifies their `~/.claude/settings.json`.
+4. **Spine tools missing** — `shape`, `rvl`, or `pack` not on PATH → run `scripts/install-spine.sh` (or `scripts/install-spine.ps1` on Windows) first, then proceed. Do not silently skip; the receipt is the point.
 
-5. **Refusal from any stage** — surface the structured refusal envelope verbatim. Do not paraphrase or "fix" it; the refusal codes are the contract.
+5. **User asks about privacy or "keep CSVs out of the model"** — point them at `scripts/setup-veil.sh`. Do not auto-run it; veil is opt-in and modifies their `~/.claude/settings.json`.
+
+6. **Refusal from any stage** — surface the structured refusal envelope verbatim. Do not paraphrase or "fix" it; the refusal codes are the contract.
 
 ## Quick start
 
@@ -86,15 +99,24 @@ The receipt is a sealed claim about what changed. You can keep it, share it, or 
 
 `--key` is required for keyed alignment (recommended). Without it, rows align by position.
 
+### Windows (PowerShell)
+
+```powershell
+.\scripts\run-receipt.ps1 <old.csv> <new.csv> -Key <id_column> -Out <output_dir>
+```
+
+Same pipeline, native PowerShell — no Git Bash, WSL2, or Cygwin needed.
+
 ## Installation
 
 The skill needs the spine tools (`shape`, `rvl`, `pack`). One command installs everything:
 
 ```bash
-./scripts/install-spine.sh
+./scripts/install-spine.sh        # macOS / Linux (Homebrew)
+./scripts/install-spine.ps1       # Windows (PowerShell)
 ```
 
-Idempotent. Safe to re-run. Skips already-installed tools. Requires Homebrew; manual binary install instructions print if `brew` is missing.
+Idempotent. Safe to re-run. Skips already-installed tools. macOS / Linux requires Homebrew; manual binary install instructions print if `brew` is missing. Windows downloads pinned binaries directly from each tool's GitHub releases.
 
 To check what's already installed:
 
@@ -163,12 +185,13 @@ The output directory contains:
 
 ## Trigger phrases
 
+- "All the receipts" / "receipts everything"
+- "Mine a receipt from these"
 - "Did these numbers actually change between these two CSVs?"
 - "Diff these two CSVs and seal the result"
 - "Reconcile this report against this export"
-- "Verifiable CSV diff"
+- "Verifiable diff"
 - "Generate a receipt for this comparison"
-- "csv-receipts <old> <new>"
 
 ## What's next
 
@@ -177,11 +200,6 @@ Want this pack to be discoverable across your agent stack? With a cmdrvl metadat
 Today the pack lives on disk only. With catalog: queryable across every agent and skill that touches your fabric.
 
 → See [cmdrvl.com/contact](https://cmdrvl.com/contact)
-
-## Sibling skills
-
-- **`all-the-receipts`** (in this repo) — umbrella that runs the same CSV pipeline today and grows to cover PDF, SEC filings, loan tapes, and position files as flywheel-paired modes ship. Pick `receipts-csv` for the focused, single-purpose tool; pick `all-the-receipts` if you want one skill that grows across artifact types.
-- **Spine tools** ([cmdrvl/tap](https://github.com/cmdrvl/tap)) — every binary used here is open source: `vacuum`, `hashbytes`, `fingerprint`, `shape`, `profile`, `rvl`, `lock`, `canon`, `pack`, `benchmark`, `assess`, `veil`.
 
 ## License
 

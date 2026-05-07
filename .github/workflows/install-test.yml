@@ -23,12 +23,34 @@ jobs:
         run: |
           ls -la
           test -f install.sh
-          test -x shared/scripts/check-spine.sh
-          test -x shared/scripts/install-spine.sh
-          test -x shared/scripts/setup-veil.sh
-          test -x skills/receipts-csv/scripts/run-receipt.sh
-          test -f skills/receipts-csv/assets/channel-spend/agency-report.csv
-          test -f skills/receipts-csv/assets/channel-spend/bank-statement.csv
+          # Both skills must be self-contained — vendored copies of the
+          # spine-install + veil scripts so each skill works standalone
+          # when symlinked into a harness (or pushed to jeffreys-skills.md).
+          for s in receipts-csv all-the-receipts; do
+            test -x skills/$s/scripts/check-spine.sh
+            test -x skills/$s/scripts/install-spine.sh
+            test -f skills/$s/scripts/install-spine.ps1
+            test -x skills/$s/scripts/setup-veil.sh
+            test -x skills/$s/scripts/run-receipt.sh
+            test -f skills/$s/scripts/run-receipt.ps1
+            test -f skills/$s/assets/channel-spend/agency-report.csv
+            test -f skills/$s/assets/channel-spend/bank-statement.csv
+          done
+
+          # Drift check: vendored copies must match between the two skills.
+          # receipts-csv is the canonical home (see AGENTS.md). When you
+          # update one, sync the other in the same commit.
+          for f in check-spine.sh install-spine.sh install-spine.ps1 setup-veil.sh run-receipt.sh run-receipt.ps1; do
+            diff -q skills/receipts-csv/scripts/$f skills/all-the-receipts/scripts/$f \
+              || { echo "ERROR: $f drifted between receipts-csv and all-the-receipts"; exit 1; }
+          done
+
+          # Also check the bundled CSV samples match.
+          for f in agency-report.csv bank-statement.csv; do
+            diff -q skills/receipts-csv/assets/channel-spend/$f \
+                    skills/all-the-receipts/assets/channel-spend/$f \
+              || { echo "ERROR: assets/$f drifted"; exit 1; }
+          done
 
       - name: bash syntax-check every script
         run: |
@@ -54,7 +76,7 @@ jobs:
           HOME="$TEST_HOME" SKIP_SPINE_INSTALL=1 bash "$TEST_HOME/.claude/skills/receipts-bundle/install.sh"
           # Both harnesses should now have working symlinks pointing at the bundle.
           for h in claude codex; do
-            for s in receipts-csv receipts-flywheel; do
+            for s in receipts-csv all-the-receipts; do
               link="$TEST_HOME/.$h/skills/$s"
               test -L "$link" || { echo "MISSING SYMLINK: $link"; exit 1; }
               target="$(readlink "$link")"
@@ -76,15 +98,15 @@ jobs:
 
       - name: Install spine tools via install-spine.sh
         run: |
-          ./shared/scripts/install-spine.sh
+          ./skills/receipts-csv/scripts/install-spine.sh
           shape --version
           rvl --version
           pack --version
 
       - name: check-spine.sh reports all required tools installed
         run: |
-          ./shared/scripts/check-spine.sh
-          ./shared/scripts/check-spine.sh | python3 -c '
+          ./skills/receipts-csv/scripts/check-spine.sh
+          ./skills/receipts-csv/scripts/check-spine.sh | python3 -c '
           import json, sys
           d = json.load(sys.stdin)
           missing = [t["name"] for t in d["tools"] if t["required"] and not t["installed"]]
@@ -94,15 +116,31 @@ jobs:
           print("ok — all required spine tools installed")
           '
 
-      - name: Run bundled demo end-to-end
+      - name: Run bundled demo end-to-end (receipts-csv)
         run: |
-          OUT="${{ runner.temp }}/ci-receipt"
+          OUT="${{ runner.temp }}/ci-receipt-csv"
           ./skills/receipts-csv/scripts/run-receipt.sh \
             ./skills/receipts-csv/assets/channel-spend/agency-report.csv \
             ./skills/receipts-csv/assets/channel-spend/bank-statement.csv \
             --key channel \
             --out "$OUT" \
             --note "ci smoke test"
+          test -f "$OUT/manifest.json"
+          test -f "$OUT/shape.report.json"
+          test -f "$OUT/rvl.report.json"
+          pack verify "$OUT" --no-witness
+
+      - name: Run bundled demo end-to-end (all-the-receipts)
+        run: |
+          # all-the-receipts ships its own copy of the CSV runner and
+          # sample. Catch drift between the two skills here.
+          OUT="${{ runner.temp }}/ci-receipt-atr"
+          ./skills/all-the-receipts/scripts/run-receipt.sh \
+            ./skills/all-the-receipts/assets/channel-spend/agency-report.csv \
+            ./skills/all-the-receipts/assets/channel-spend/bank-statement.csv \
+            --key channel \
+            --out "$OUT" \
+            --note "ci smoke test (all-the-receipts)"
           test -f "$OUT/manifest.json"
           test -f "$OUT/shape.report.json"
           test -f "$OUT/rvl.report.json"
@@ -168,8 +206,10 @@ jobs:
       - name: PowerShell syntax check
         run: |
           $files = @('install.ps1',
-                     'shared/scripts/install-spine.ps1',
-                     'skills/receipts-csv/scripts/run-receipt.ps1')
+                     'skills/receipts-csv/scripts/install-spine.ps1',
+                     'skills/receipts-csv/scripts/run-receipt.ps1',
+                     'skills/all-the-receipts/scripts/install-spine.ps1',
+                     'skills/all-the-receipts/scripts/run-receipt.ps1')
           foreach ($f in $files) {
             $tokens = $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile($f, [ref]$tokens, [ref]$errors) | Out-Null
@@ -183,21 +223,36 @@ jobs:
 
       - name: Install spine binaries via install-spine.ps1
         run: |
-          ./shared/scripts/install-spine.ps1
+          ./skills/receipts-csv/scripts/install-spine.ps1
           # The script adds to user PATH for future shells; expose in this one too
           $env:Path = "$env:Path;$env:USERPROFILE\.cmdrvl\bin"
           shape --version
           rvl --version
           pack --version
 
-      - name: Run bundled demo end-to-end
+      - name: Run bundled demo end-to-end (receipts-csv)
         run: |
           $env:Path = "$env:Path;$env:USERPROFILE\.cmdrvl\bin"
-          $out = Join-Path $env:RUNNER_TEMP "ci-receipt"
+          $out = Join-Path $env:RUNNER_TEMP "ci-receipt-csv"
           ./skills/receipts-csv/scripts/run-receipt.ps1 `
             ./skills/receipts-csv/assets/channel-spend/agency-report.csv `
             ./skills/receipts-csv/assets/channel-spend/bank-statement.csv `
             -Key channel -Out $out -Note "ci windows smoke"
+          if (-not (Test-Path (Join-Path $out "manifest.json"))) {
+            Write-Error "manifest.json missing"
+            exit 1
+          }
+          pack verify $out --no-witness
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Run bundled demo end-to-end (all-the-receipts)
+        run: |
+          $env:Path = "$env:Path;$env:USERPROFILE\.cmdrvl\bin"
+          $out = Join-Path $env:RUNNER_TEMP "ci-receipt-atr"
+          ./skills/all-the-receipts/scripts/run-receipt.ps1 `
+            ./skills/all-the-receipts/assets/channel-spend/agency-report.csv `
+            ./skills/all-the-receipts/assets/channel-spend/bank-statement.csv `
+            -Key channel -Out $out -Note "ci windows smoke (all-the-receipts)"
           if (-not (Test-Path (Join-Path $out "manifest.json"))) {
             Write-Error "manifest.json missing"
             exit 1

@@ -22,7 +22,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Pinned tool versions. Keep in sync with shared/scripts/install-spine.sh
+# Pinned tool versions. Keep in sync with the bash install-spine.sh in this dir.
 # REQUIRED set. The release-asset name is "<tool>-<version>-x86_64-pc-windows-msvc.zip".
 $Versions = @{
     "shape" = "0.5.0"
