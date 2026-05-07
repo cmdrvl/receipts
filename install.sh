@@ -35,6 +35,36 @@ die()  { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 [[ -n "${HOME:-}" ]] || die "HOME is not set"
 command -v git >/dev/null 2>&1 || die "git not found — install git first"
 
+# Pre-flight: brew is required for spine-tool install. Surface the missing-brew
+# case here, before any clone/symlink work, so the user gets a clear path.
+# Skipped when SKIP_SPINE_INSTALL=1 (CI / advanced users handle it themselves).
+if [[ "${SKIP_SPINE_INSTALL:-0}" != "1" ]] && ! command -v brew >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+
+receipts uses Homebrew to install the cmdrvl spine tools (shape, rvl, pack).
+brew was not found on this machine.
+
+Install brew first, then re-run this installer:
+
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+Coverage:
+  macOS (arm64 + x86_64) → use the command above
+  Linux (arm64 + x86_64) → same command, installs Linuxbrew
+  Windows               → install WSL2 first, then run the command above
+
+If you'd rather skip brew, you can:
+  1. Re-run with SKIP_SPINE_INSTALL=1 to still link the skills, then
+  2. Download the spine binaries directly from each tool's GitHub releases:
+       https://github.com/cmdrvl/shape/releases
+       https://github.com/cmdrvl/rvl/releases
+       https://github.com/cmdrvl/pack/releases
+     and place them on your PATH.
+
+EOF
+  exit 1
+fi
+
 # 1. Detect harness skill dirs
 say "detecting AI coding agent skill dirs"
 DETECTED=()

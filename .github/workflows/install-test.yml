@@ -9,9 +9,13 @@ on:
 
 jobs:
   smoke:
-    name: install + bundled-demo end-to-end
-    runs-on: macos-latest
-    timeout-minutes: 15
+    name: install + bundled-demo end-to-end (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -40,23 +44,39 @@ jobs:
           # auto-detection works for a fresh Claude Code user.
           TEST_HOME: ${{ runner.temp }}/sandbox-home
         run: |
-          mkdir -p "$TEST_HOME/.claude"
-          # Run install.sh with this clone as the source, skip brew install
-          # (separate step below) so we exercise the symlink + clone logic.
-          # Tell install.sh to use the local checkout rather than re-cloning.
-          cp -R "$GITHUB_WORKSPACE" "$TEST_HOME/.claude/skills/receipts-bundle"
-          # The script will see ~/.claude exists and the bundle exists; it
-          # should detect them, link the skills, and skip the spine install.
+          # Pre-create skill dirs for two harnesses so we exercise the
+          # multi-harness symlink path, not just the single-harness path.
+          mkdir -p "$TEST_HOME/.claude/skills"
+          mkdir -p "$TEST_HOME/.codex/skills"
+          # Place the bundle directly so install.sh detects it via its
+          # back-compat path and skips re-cloning.
+          cp -R "$GITHUB_WORKSPACE/." "$TEST_HOME/.claude/skills/receipts-bundle"
           HOME="$TEST_HOME" SKIP_SPINE_INSTALL=1 bash "$TEST_HOME/.claude/skills/receipts-bundle/install.sh"
-          test -L "$TEST_HOME/.claude/skills/receipts-csv"
-          test -L "$TEST_HOME/.claude/skills/receipts-flywheel"
+          # Both harnesses should now have working symlinks pointing at the bundle.
+          for h in claude codex; do
+            for s in receipts-csv receipts-flywheel; do
+              link="$TEST_HOME/.$h/skills/$s"
+              test -L "$link" || { echo "MISSING SYMLINK: $link"; exit 1; }
+              target="$(readlink "$link")"
+              test -d "$target" || { echo "BROKEN SYMLINK: $link → $target"; exit 1; }
+              echo "ok: $link → $target"
+            done
+          done
 
-      - name: Install spine tools via brew tap
+      - name: Set up Linuxbrew (ubuntu only)
+        if: runner.os == 'Linux'
         run: |
-          brew tap cmdrvl/tap
-          brew install cmdrvl/tap/shape cmdrvl/tap/rvl cmdrvl/tap/pack \
-                       cmdrvl/tap/lock cmdrvl/tap/canon cmdrvl/tap/profile \
-                       cmdrvl/tap/vacuum cmdrvl/tap/hashbytes cmdrvl/tap/fingerprint
+          # Linuxbrew is preinstalled on ubuntu-latest GitHub runners but
+          # not on PATH by default — wire it up.
+          test -x /home/linuxbrew/.linuxbrew/bin/brew
+          echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "$HOME/.bash_profile"
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
+          echo "/home/linuxbrew/.linuxbrew/sbin" >> "$GITHUB_PATH"
+
+      - name: Install spine tools via install-spine.sh
+        run: |
+          ./shared/scripts/install-spine.sh
           shape --version
           rvl --version
           pack --version

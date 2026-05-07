@@ -23,9 +23,14 @@ Both run on the same spine: `shape` (structural gate) → `rvl` (numeric verdict
 curl -fsSL https://raw.githubusercontent.com/cmdrvl/receipts/main/install.sh | bash
 ```
 
-Clones into `~/.claude/skills/receipts-bundle`, symlinks both skills (`receipts-csv` and `receipts-flywheel`) into `~/.claude/skills/`, installs the cmdrvl spine via Homebrew, and prints the next-steps demo command. Idempotent — safe to re-run for updates.
+Auto-detects every AI coding agent skill dir on your machine (`~/.claude`, `~/.codex`, `~/.gemini`, `~/.cursor`, `~/.agents`), clones the repo into a single bundle, symlinks both skills (`receipts-csv` and `receipts-flywheel`) into each detected harness's `skills/` dir, and installs the cmdrvl spine via Homebrew. Idempotent — safe to re-run for updates.
 
 If you prefer not to pipe `curl` to `bash`, [read `install.sh`](install.sh) first and run it locally.
+
+**Prereq: Homebrew.** `install.sh` checks for `brew` and prints clear install instructions if it's missing. Coverage:
+- macOS (arm64 + x86_64) — install brew via the official installer
+- Linux (arm64 + x86_64) — same command, installs Linuxbrew
+- Windows — run inside WSL2 (no native Windows binaries, but Linux works)
 
 ### Manual
 
