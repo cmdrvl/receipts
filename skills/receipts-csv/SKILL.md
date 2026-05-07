@@ -33,11 +33,13 @@ When the user invokes this skill, decide based on what they provide:
 
 1. **No arguments** — run the bundled marketing-channel sample to show the user what the receipt looks like end-to-end. Use the command in *Quick start → First time? Run the bundled demo*. Print the output and explain the verdict in one sentence.
 
-2. **Two CSV paths supplied** — run `scripts/run-receipt.sh <old> <new>` with their paths. Ask the user once for the key column (or use `--key` if obvious from headers); default to positional alignment only if they confirm there's no stable key. Default `--out` to a fresh tmp directory unless they specify.
+2. **Two CSV paths supplied** — run `bash scripts/run-receipt.sh <old> <new>` with their paths. Ask the user once for the key column (or use `--key` if obvious from headers); default to positional alignment only if they confirm there's no stable key. Default `--out` to a fresh tmp directory unless they specify.
 
-3. **Spine tools missing** — `shape`, `rvl`, or `pack` not on PATH → run `scripts/install-spine.sh` (or `scripts/install-spine.ps1` on Windows) first, then proceed. Do not silently skip; the receipt is the point.
+3. **Spine tools missing** — `shape`, `rvl`, or `pack` not on PATH → run `bash scripts/install-spine.sh` (or `pwsh scripts/install-spine.ps1` on Windows) first, then proceed. Do not silently skip; the receipt is the point.
 
-4. **User asks about privacy or "keep CSVs out of the model"** — point them at `scripts/setup-veil.sh`. Do not auto-run it; veil is opt-in and modifies their `~/.claude/settings.json`.
+4. **User asks about privacy or "keep CSVs out of the model"** — point them at `bash scripts/setup-veil.sh`. Do not auto-run it; veil is opt-in and modifies their `~/.claude/settings.json`.
+
+> Always invoke the script via interpreter (`bash <script>` or `pwsh <script>`). Files in this skill are intentionally non-executable — direct `./scripts/foo.sh` invocation will fail with `Permission denied`.
 
 5. **Refusal from any stage** — surface the structured refusal envelope verbatim. Do not paraphrase or "fix" it; the refusal codes are the contract.
 

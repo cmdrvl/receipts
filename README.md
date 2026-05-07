@@ -63,7 +63,7 @@ Prereq: [Git for Windows](https://git-scm.com/download/win) (provides `git`).
 git clone https://github.com/cmdrvl/receipts.git ~/.claude/skills/receipts-bundle
 ln -s ~/.claude/skills/receipts-bundle/skills/receipts-csv      ~/.claude/skills/receipts-csv
 ln -s ~/.claude/skills/receipts-bundle/skills/all-the-receipts  ~/.claude/skills/all-the-receipts
-~/.claude/skills/receipts-bundle/skills/receipts-csv/scripts/install-spine.sh
+bash ~/.claude/skills/receipts-bundle/skills/receipts-csv/scripts/install-spine.sh
 ```
 
 ### Optional: keep your CSV bytes out of the model context
@@ -73,7 +73,7 @@ The skills work fine without this. It's a privacy enhancement for people who wan
 If you want it, an interactive setup script walks you through three stages — install the `veil` binary, register the agent-harness hooks, drop a conservative starter config — asking for confirmation before each:
 
 ```bash
-~/.claude/skills/receipts-bundle/skills/receipts-csv/scripts/setup-veil.sh
+bash ~/.claude/skills/receipts-bundle/skills/receipts-csv/scripts/setup-veil.sh
 ```
 
 Pass `--yes` to skip prompts.
@@ -87,7 +87,7 @@ After install:
 /receipts-csv
 
 # Or run the bundled demo directly
-~/.claude/skills/receipts-bundle/skills/receipts-csv/scripts/run-receipt.sh \
+bash ~/.claude/skills/receipts-bundle/skills/receipts-csv/scripts/run-receipt.sh \
   ~/.claude/skills/receipts-bundle/skills/receipts-csv/assets/channel-spend/agency-report.csv \
   ~/.claude/skills/receipts-bundle/skills/receipts-csv/assets/channel-spend/bank-statement.csv \
   --key channel \
