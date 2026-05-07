@@ -36,17 +36,17 @@ ln -s ~/.claude/skills/receipts-bundle/skills/receipts-flywheel ~/.claude/skills
 ~/.claude/skills/receipts-bundle/shared/scripts/install-spine.sh
 ```
 
-### Privacy: keep your data out of the LLM context
+### Optional: keep your CSV bytes out of the model context
 
-If you're running these inside Claude Code or Codex, install **`veil`** so your data bytes never enter the model context — only the deterministic verdicts do:
+The skills work fine without this. It's a privacy enhancement for people who want a hard guarantee that no AI model in their session reads the raw data.
+
+If you want it, an interactive setup script walks you through three stages — install the `veil` binary, register the agent-harness hooks, enable the `data.tabular` pack — asking for confirmation before each:
 
 ```bash
-brew install cmdrvl/tap/veil
-veil install
-veil config enable-pack data.tabular
+~/.claude/skills/receipts-bundle/shared/scripts/setup-veil.sh
 ```
 
-The skills work without veil, but the "no LLM in the chain" promise is enforced at the harness level only with veil.
+Pass `--yes` to skip prompts.
 
 ## Quick start
 

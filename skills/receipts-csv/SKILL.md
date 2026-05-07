@@ -21,7 +21,7 @@ description: >-
 Three deterministic tools chained together:
 
 1. **`shape`** — structural compatibility gate. Refuses if columns or keys don't align. No silent type drift.
-2. **`rvl`** — numeric change verdict: `REAL_CHANGE`, `NO_REAL_CHANGE`, or `REFUSAL`. Reveals the smallest set of cells that explain what changed.
+2. **`rvl`** — numeric change verdict: `REAL_CHANGE`, `NO_REAL_CHANGE`, or `REFUSAL`. Reveals the smallest set of *numeric* cells that explain what changed. (String/categorical changes show up as differing cells but don't trigger the numeric verdict — `rvl` is scoped to numeric movement on purpose.)
 3. **`pack seal`** — bundle the reports into a content-addressed evidence pack. `pack verify` checks integrity offline; no network, no catalog, no trust.
 
 Every artifact has a SHA-256 identity. Every refusal has a structured code. Reproducible in 30 seconds against the bundled sample.
@@ -87,17 +87,25 @@ To check what's already installed:
 ../../shared/scripts/check-spine.sh
 ```
 
-## Privacy: keep CSV bytes out of the model context (recommended for AI agents)
+## Optional: keep CSV bytes out of the model context
 
-If you're running this skill inside Claude Code, Codex, or any agent harness, install **`veil`** (data exfiltration guard for AI coding agents) to ensure your CSV bytes never leak into the LLM context — only the deterministic tool output (verdicts, hashes, pack_ids) is visible to the model.
+The skill works fine without this. It's an opt-in privacy enhancement.
+
+If you'd like to make sure your CSV data never enters the model's context (only the deterministic tool output does), install and configure `veil` — the cmdrvl data-exfiltration guard for AI coding agents. The bundled setup script walks you through it interactively:
 
 ```bash
-brew install cmdrvl/tap/veil
-veil install                              # adds the agent-harness hooks
-veil config enable-pack data.tabular     # protect CSV/TSV/parquet
+../../shared/scripts/setup-veil.sh
 ```
 
-The skill works without veil — but the "no LLM in the chain" promise is aspirational without it. With veil, it's enforced at the harness level.
+It checks each stage (binary install, harness hooks, `data.tabular` pack), asks for confirmation before changing anything, and skips steps that are already done. Pass `--yes` for unattended runs.
+
+What it does, broken into stages so you can stop wherever:
+
+1. `brew install cmdrvl/tap/veil` — install the binary
+2. `veil install` — register the agent-harness hooks (modifies `~/.claude/settings.json`)
+3. Drop a starter `~/.config/veil/config.toml` that protects CSV / TSV / parquet by default and authorizes the spine tools as subprocess readers
+
+You can run any stage manually if you'd rather; the script is a convenience, not a requirement. Without veil, this skill still calls deterministic Rust binaries and only sends verdicts back to the model — you just don't have a hard guarantee that some other tool in your agent's session won't `cat` the CSV.
 
 ## Output contract
 

@@ -112,11 +112,13 @@ Try the bundled demo:
 
 Or, in any Claude Code session: /receipts-csv
 
-For privacy when running inside an AI agent harness, install veil:
+Optional — keep CSV bytes out of the model context (privacy):
 
-  brew install cmdrvl/tap/veil
-  veil install
-  veil config enable-pack data.tabular
+  bash $BUNDLE_DIR/shared/scripts/setup-veil.sh
+
+That's an interactive guided installer for veil (the cmdrvl data-exfiltration
+guard for AI coding agents). Skip it if you don't need the harness-level
+guarantee — the skill works fine either way.
 
 Repo: https://github.com/cmdrvl/receipts
 EOF
