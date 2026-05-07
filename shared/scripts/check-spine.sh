@@ -10,8 +10,13 @@
 
 set -euo pipefail
 
-REQUIRED=(vacuum hashbytes fingerprint shape profile rvl lock canon pack)
-OPTIONAL=(veil)
+# Required for the receipts-csv pipeline (must match install-spine.sh).
+REQUIRED=(shape rvl pack)
+
+# Available in the spine but not strictly needed for receipts-csv. veil is
+# the privacy guard; the rest are exercised by receipts-flywheel modes
+# (PDF, filings, tape) as those land.
+OPTIONAL=(veil vacuum hashbytes fingerprint profile lock canon)
 
 emit_tool() {
   local tool="$1" required="$2"
