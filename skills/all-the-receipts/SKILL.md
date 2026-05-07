@@ -9,6 +9,8 @@ description: >-
   receipt from these", "did these numbers actually change", "diff
   these two CSVs", "reconcile these reports", or wants a sealed,
   offline-verifiable evidence pack.
+license: MIT
+distribution: public
 ---
 
 # all-the-receipts
