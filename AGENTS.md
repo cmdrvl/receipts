@@ -77,11 +77,69 @@ The umbrella's contract is "feed two artifacts of compatible types, get a sealed
 
 If a future skill (e.g. `receipts-pdf`) is genuinely self-contained and useful in isolation, it can live alongside `receipts-csv` and `all-the-receipts`. Same rules apply: vendored scripts only, no top-level `shared/`, must work under `jsm push`.
 
+## Releasing to jeffreys-skills.md
+
+We publish skills to jsm via `jsm push`. The release script `bin/release-jsm.sh` codifies the full contract — pre-flight checks plus the upload — so future releases don't relearn the gotchas.
+
+### One-shot
+
+```bash
+./bin/release-jsm.sh all-the-receipts -m "csv mode polish + windows fix"
+```
+
+The script runs every check below in order and aborts on the first failure. No `--attest` to pass — it's already wired in.
+
+### What gets validated before upload
+
+1. **Skill directory exists** at `skills/<name>/`.
+2. **Working tree is clean** — no uncommitted changes.
+3. **On `main`, in sync with `origin/main`** — release only from pushed commits.
+4. **Latest CI run on this commit succeeded** — uses `gh run list`. If `gh` isn't installed, the check is skipped with a warning.
+5. **No exec bits** on `*.sh` / `*.ps1` files in the skill's `scripts/` directory. jsm's upload validator rejects executable files. We strip them in-repo and CI guards against drift.
+6. **Drift check** between `receipts-csv` and `all-the-receipts` — the 6 mirrored scripts and 2 CSV samples must match. (Skipped if either skill is missing.)
+7. **`jsm validate`** passes for the skill.
+
+Then `jsm push --attest --lint-changelog -m "$MSG" skills/<name>/`.
+
+### Required SKILL.md frontmatter for jsm uploads
+
+jsm enforces these fields at upload (server-side, after local validation):
+
+```yaml
+---
+name: <slug>
+description: >-
+  <what the skill does + when to invoke it>
+license: MIT                    # or whatever license — required, free-form string
+distribution: public            # one of: public | subscribers | forbidden
+---
+```
+
+`name` and `description` alone pass `jsm validate`, but the upload server rejects without `license` and `distribution`. Our skills are MIT, freely shareable → `distribution: public`.
+
+### The other things you set on jsm (not in frontmatter)
+
+These live on jeffreys-skills.md itself, not in the SKILL.md, and are configured via the web UI when you publish:
+
+- **Category** — we use `flywheel-tool` for `all-the-receipts`.
+- **Compatibility tags** (max 5 per skill) — `ctx-data, ctx-cli, ctx-security, ctx-testing, ctx-devops` for `all-the-receipts`. Run `jsm tags` to see the full taxonomy.
+- **Author notes** — short subscriber-facing context, what's working today vs growing.
+- **Copyright** — `Copyright (c) 2026 cmdrvl`.
+
+### When to bump the version
+
+Every `jsm push` increments the version on the server. There's no manual version field in the frontmatter. Use the `-m` message to describe what changed; that becomes the changelog entry. `--lint-changelog` (already on by default in our script) catches malformed messages.
+
+### What if we ever want a private/team-only release
+
+Change `distribution: public` to `distribution: subscribers` (paying subscribers only) or `distribution: forbidden` (no redistribution; only for skills you intend to keep proprietary). The script doesn't enforce a particular value — set what you want in the SKILL.md frontmatter and run.
+
 ## What lives outside the skills
 
-These two are the only things that legitimately live above the skills:
+These three are the only things that legitimately live above the skills:
 
 - `install.sh` / `install.ps1` — the curl|bash and iwr|iex installers that set up the bundle and link skills into harnesses. They reference `skills/receipts-csv/scripts/install-spine.sh` as the canonical install entry.
 - `.github/workflows/install-test.yml` — CI.
+- `bin/release-jsm.sh` — release tool for `jsm push` (see *Releasing to jeffreys-skills.md* above).
 
 If you find a reason to add another top-level directory, document the reason here and explain how it preserves the symlink + jsm-push invariants.
