@@ -64,7 +64,7 @@ if [[ -n "$OUT" ]]; then
 fi
 
 echo "==> shape"
-if ! shape "$OLD" "$NEW" "${KEY_FLAG[@]}" --json --no-witness > "$WORK/shape.report.json"; then
+if ! shape "$OLD" "$NEW" "${KEY_FLAG[@]+"${KEY_FLAG[@]}"}" --json --no-witness > "$WORK/shape.report.json"; then
   echo "shape REFUSAL — structural incompatibility:" >&2
   cat "$WORK/shape.report.json" >&2
   exit 2
@@ -73,7 +73,7 @@ python3 -c "import json,sys; d=json.load(open('$WORK/shape.report.json')); print
 
 echo "==> rvl"
 RVL_EXIT=0
-rvl "$OLD" "$NEW" "${KEY_FLAG[@]}" --json --no-witness > "$WORK/rvl.report.json" || RVL_EXIT=$?
+rvl "$OLD" "$NEW" "${KEY_FLAG[@]+"${KEY_FLAG[@]}"}" --json --no-witness > "$WORK/rvl.report.json" || RVL_EXIT=$?
 if [[ $RVL_EXIT -eq 2 ]]; then
   echo "rvl REFUSAL:" >&2
   cat "$WORK/rvl.report.json" >&2
@@ -93,7 +93,8 @@ PYEOF
 
 echo "==> pack seal"
 pack seal "$WORK/shape.report.json" "$WORK/rvl.report.json" \
-  "${OUT_FLAG[@]}" "${NOTE_FLAG[@]}" --no-witness > "$WORK/pack.out" 2>&1 || {
+  "${OUT_FLAG[@]+"${OUT_FLAG[@]}"}" "${NOTE_FLAG[@]+"${NOTE_FLAG[@]}"}" \
+  --no-witness > "$WORK/pack.out" 2>&1 || {
     echo "pack REFUSAL:" >&2
     cat "$WORK/pack.out" >&2
     exit 2

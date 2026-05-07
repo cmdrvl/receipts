@@ -209,9 +209,17 @@ jobs:
         run: |
           $env:Path = "$env:Path;$env:USERPROFILE\.cmdrvl\bin"
           $tmp = $env:RUNNER_TEMP
+          $script = (Resolve-Path "./skills/receipts-csv/scripts/run-receipt.ps1").Path
+          $old = (Resolve-Path "./skills/receipts-csv/assets/channel-spend/agency-report.csv").Path
+          $new = (Resolve-Path "./skills/receipts-csv/assets/channel-spend/bank-statement.csv").Path
+
+          # NOTE: invoke via `pwsh -File` so the script runs as a subprocess
+          # and its exit code is captured in $LASTEXITCODE. Same-process
+          # `./script.ps1` invocation exits the parent without setting
+          # $LASTEXITCODE — a PowerShell behavior, not a bug in run-receipt.
 
           # Missing file
-          ./skills/receipts-csv/scripts/run-receipt.ps1 (Join-Path $tmp "nope-old.csv") (Join-Path $tmp "nope-new.csv") -Key x -Out (Join-Path $tmp "r1") *> $null
+          pwsh -NoProfile -File $script (Join-Path $tmp "nope-old.csv") (Join-Path $tmp "nope-new.csv") -Key x -Out (Join-Path $tmp "r1") *> $null
           if ($LASTEXITCODE -ne 2) {
             Write-Error "expected exit 2 for missing file, got $LASTEXITCODE"
             exit 1
@@ -222,10 +230,7 @@ jobs:
           $collision = Join-Path $tmp "already-exists"
           New-Item -ItemType Directory -Force -Path $collision | Out-Null
           New-Item -ItemType File -Force -Path (Join-Path $collision "something") | Out-Null
-          ./skills/receipts-csv/scripts/run-receipt.ps1 `
-            ./skills/receipts-csv/assets/channel-spend/agency-report.csv `
-            ./skills/receipts-csv/assets/channel-spend/bank-statement.csv `
-            -Key channel -Out $collision *> $null
+          pwsh -NoProfile -File $script $old $new -Key channel -Out $collision *> $null
           if ($LASTEXITCODE -ne 2) {
             Write-Error "expected exit 2 for pack collision, got $LASTEXITCODE"
             exit 1
