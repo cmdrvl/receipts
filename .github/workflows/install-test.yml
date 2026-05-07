@@ -1,0 +1,117 @@
+name: install-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: install + bundled-demo end-to-end
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sanity-check checked-out files
+        run: |
+          ls -la
+          test -f install.sh
+          test -x shared/scripts/check-spine.sh
+          test -x shared/scripts/install-spine.sh
+          test -x shared/scripts/setup-veil.sh
+          test -x skills/receipts-csv/scripts/run-receipt.sh
+          test -f skills/receipts-csv/assets/channel-spend/agency-report.csv
+          test -f skills/receipts-csv/assets/channel-spend/bank-statement.csv
+
+      - name: bash syntax-check every script
+        run: |
+          for f in $(git ls-files '*.sh'); do
+            echo "checking $f"
+            bash -n "$f"
+          done
+
+      - name: Install via install.sh against ephemeral HOME
+        env:
+          # Send the install into a sandbox HOME so we don't pollute the runner
+          # with arbitrary dotfiles, and so we can validate the multi-harness
+          # auto-detection works for a fresh Claude Code user.
+          TEST_HOME: ${{ runner.temp }}/sandbox-home
+        run: |
+          mkdir -p "$TEST_HOME/.claude"
+          # Run install.sh with this clone as the source, skip brew install
+          # (separate step below) so we exercise the symlink + clone logic.
+          # Tell install.sh to use the local checkout rather than re-cloning.
+          cp -R "$GITHUB_WORKSPACE" "$TEST_HOME/.claude/skills/receipts-bundle"
+          # The script will see ~/.claude exists and the bundle exists; it
+          # should detect them, link the skills, and skip the spine install.
+          HOME="$TEST_HOME" SKIP_SPINE_INSTALL=1 bash "$TEST_HOME/.claude/skills/receipts-bundle/install.sh"
+          test -L "$TEST_HOME/.claude/skills/receipts-csv"
+          test -L "$TEST_HOME/.claude/skills/receipts-flywheel"
+
+      - name: Install spine tools via brew tap
+        run: |
+          brew tap cmdrvl/tap
+          brew install cmdrvl/tap/shape cmdrvl/tap/rvl cmdrvl/tap/pack \
+                       cmdrvl/tap/lock cmdrvl/tap/canon cmdrvl/tap/profile \
+                       cmdrvl/tap/vacuum cmdrvl/tap/hashbytes cmdrvl/tap/fingerprint
+          shape --version
+          rvl --version
+          pack --version
+
+      - name: check-spine.sh reports all required tools installed
+        run: |
+          ./shared/scripts/check-spine.sh
+          ./shared/scripts/check-spine.sh | python3 -c '
+          import json, sys
+          d = json.load(sys.stdin)
+          missing = [t["name"] for t in d["tools"] if t["required"] and not t["installed"]]
+          if missing:
+              print("ERROR: required tools missing:", missing)
+              sys.exit(1)
+          print("ok — all required spine tools installed")
+          '
+
+      - name: Run bundled demo end-to-end
+        run: |
+          OUT="${{ runner.temp }}/ci-receipt"
+          ./skills/receipts-csv/scripts/run-receipt.sh \
+            ./skills/receipts-csv/assets/channel-spend/agency-report.csv \
+            ./skills/receipts-csv/assets/channel-spend/bank-statement.csv \
+            --key channel \
+            --out "$OUT" \
+            --note "ci smoke test"
+          test -f "$OUT/manifest.json"
+          test -f "$OUT/shape.report.json"
+          test -f "$OUT/rvl.report.json"
+          pack verify "$OUT" --no-witness
+
+      - name: Refusal paths exit with code 2
+        run: |
+          # Non-existent file
+          set +e
+          ./skills/receipts-csv/scripts/run-receipt.sh /nope-old.csv /nope-new.csv --key x --out /tmp/r1 2>/dev/null >/dev/null
+          rc=$?
+          set -e
+          [[ $rc -eq 2 ]] || { echo "expected exit 2 for missing file, got $rc"; exit 1; }
+          echo "ok — missing file: exit 2"
+
+          # Pre-existing non-empty output dir
+          mkdir -p /tmp/already-exists
+          touch /tmp/already-exists/something
+          set +e
+          ./skills/receipts-csv/scripts/run-receipt.sh \
+            ./skills/receipts-csv/assets/channel-spend/agency-report.csv \
+            ./skills/receipts-csv/assets/channel-spend/bank-statement.csv \
+            --key channel --out /tmp/already-exists 2>/dev/null >/dev/null
+          rc=$?
+          set -e
+          [[ $rc -eq 2 ]] || { echo "expected exit 2 for pack collision, got $rc"; exit 1; }
+          echo "ok — pack collision: exit 2"
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "::notice::receipts install + demo end-to-end OK"

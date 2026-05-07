@@ -64,10 +64,16 @@ fi
 
 # Stage 2: veil install (registers Claude Code hooks)
 say "checking veil harness hooks"
-if grep -q "veil" "$HOME/.claude/settings.json" 2>/dev/null; then
-  ok "veil hooks already registered in ~/.claude/settings.json"
+SETTINGS="$HOME/.claude/settings.json"
+if grep -q '"veil"' "$SETTINGS" 2>/dev/null; then
+  ok "veil hooks already registered in $SETTINGS"
 else
-  if confirm "Register veil's PreToolUse hooks in ~/.claude/settings.json? (one-time setup, gates Read/Grep/Bash on protected files)"; then
+  if confirm "Register veil's PreToolUse hooks in $SETTINGS? (one-time setup, gates Read/Grep/Bash on protected files)"; then
+    if [[ -f "$SETTINGS" ]]; then
+      BACKUP="$SETTINGS.pre-veil.$(date +%Y%m%d-%H%M%S)"
+      cp "$SETTINGS" "$BACKUP"
+      ok "backed up $SETTINGS → $BACKUP"
+    fi
     veil install
     ok "harness hooks installed"
   else
