@@ -236,3 +236,8 @@ jobs:
             exit 1
           }
           Write-Host "ok — pack collision: exit 2"
+          # GitHub Actions pwsh host treats $LASTEXITCODE != 0 at end-of-step
+          # as failure. Last `pwsh -File` left it at 2 by design (refusal).
+          # Reset before the step exits naturally.
+          $global:LASTEXITCODE = 0
+          exit 0
