@@ -1,13 +1,14 @@
 ---
 name: receipts-csv
 description: >-
-  Got two CSVs? Get a sealed receipt of what changed. Deterministic
-  diff with a structural compatibility gate, a numeric verdict
-  (REAL CHANGE / NO REAL CHANGE / REFUSAL), and a content-addressed
-  evidence pack you can verify offline. No LLM in the chain. Use when
-  user says "did this CSV change", "diff these CSVs", "csv receipt",
-  "verifiable diff", "loan tape diff", or wants to seal a CSV
-  comparison into a hash-verified evidence pack.
+  Got two CSVs? Get a sealed receipt of which numbers changed.
+  Deterministic diff with a structural compatibility gate, a numeric
+  verdict (REAL_CHANGE / NO_REAL_CHANGE / REFUSAL), and a content-
+  addressed evidence pack you can verify offline. No LLM reads your
+  data. Use when user says "did these numbers change", "diff these
+  CSVs", "csv receipt", "verifiable CSV diff", "reconcile these
+  two reports", or wants to seal a CSV comparison into a hash-verified
+  evidence pack.
 ---
 
 # receipts-csv
@@ -20,11 +21,25 @@ description: >-
 
 Three deterministic tools chained together:
 
-1. **`shape`** — structural compatibility gate. Refuses if columns or keys don't align. No silent type drift.
-2. **`rvl`** — numeric change verdict: `REAL_CHANGE`, `NO_REAL_CHANGE`, or `REFUSAL`. Reveals the smallest set of *numeric* cells that explain what changed. (String/categorical changes show up as differing cells but don't trigger the numeric verdict — `rvl` is scoped to numeric movement on purpose.)
+1. **`shape`** — structural compatibility gate. Reports `COMPATIBLE` or `REFUSAL`. Catches missing key columns, undetectable delimiters, and type-class drift. Tolerates added columns on either side (they don't block comparison; the union is recorded for the receipt).
+2. **`rvl`** — numeric change verdict: `REAL_CHANGE`, `NO_REAL_CHANGE`, or `REFUSAL`. Reveals the smallest set of *numeric* cells that explain what changed. String/categorical changes show up in the report data but don't trigger the verdict — `rvl` is scoped to numeric movement on purpose.
 3. **`pack seal`** — bundle the reports into a content-addressed evidence pack. `pack verify` checks integrity offline; no network, no catalog, no trust.
 
 Every artifact has a SHA-256 identity. Every refusal has a structured code. Reproducible in 30 seconds against the bundled sample.
+
+## When invoked (workflow for the agent)
+
+When the user invokes this skill, decide based on what they provide:
+
+1. **No arguments** — run the bundled marketing-channel sample to show the user what the receipt looks like end-to-end. Use the command in *Quick start → First time? Run the bundled demo*. Print the output and explain the verdict in one sentence.
+
+2. **Two CSV paths supplied** — run `scripts/run-receipt.sh <old> <new>` with their paths. Ask the user once for the key column (or use `--key` if obvious from headers); default to positional alignment only if they confirm there's no stable key. Default `--out` to a fresh tmp directory unless they specify.
+
+3. **Spine tools missing** — `shape`, `rvl`, or `pack` not on PATH → run `shared/scripts/install-spine.sh` first, then proceed. Do not silently skip; the receipt is the point.
+
+4. **User asks about privacy or "keep CSVs out of the model"** — point them at `shared/scripts/setup-veil.sh`. Do not auto-run it; veil is opt-in and modifies their `~/.claude/settings.json`.
+
+5. **Refusal from any stage** — surface the structured refusal envelope verbatim. Do not paraphrase or "fix" it; the refusal codes are the contract.
 
 ## Quick start
 
@@ -97,13 +112,13 @@ If you'd like to make sure your CSV data never enters the model's context (only 
 ../../shared/scripts/setup-veil.sh
 ```
 
-It checks each stage (binary install, harness hooks, `data.tabular` pack), asks for confirmation before changing anything, and skips steps that are already done. Pass `--yes` for unattended runs.
+It checks each stage (binary install, harness hooks, starter config), asks for confirmation before changing anything, and skips steps that are already done. Pass `--yes` for unattended runs.
 
 What it does, broken into stages so you can stop wherever:
 
 1. `brew install cmdrvl/tap/veil` — install the binary
 2. `veil install` — register the agent-harness hooks (modifies `~/.claude/settings.json`)
-3. Drop a starter `~/.config/veil/config.toml` that protects CSV / TSV / parquet by default and authorizes the spine tools as subprocess readers
+3. Drop a *conservative* starter `~/.config/veil/config.toml` that protects common data subdirectories (`**/data/**`, `**/exports/**`) and authorizes the spine tools as subprocess readers. The starter does not blanket-protect `*.csv` everywhere — that would block legitimate reads of fixtures, documentation samples, and CSVs in unrelated projects across all your Claude sessions. Edit the file or drop a project-level `.veil.toml` to tighten further.
 
 You can run any stage manually if you'd rather; the script is a convenience, not a requirement. Without veil, this skill still calls deterministic Rust binaries and only sends verdicts back to the model — you just don't have a hard guarantee that some other tool in your agent's session won't `cat` the CSV.
 
@@ -113,7 +128,7 @@ Every successful run prints exactly:
 
 ```
 ==> shape
-  shape: <COMPATIBLE | INCOMPATIBLE>
+  shape: COMPATIBLE
 ==> rvl
   rvl:   <REAL_CHANGE | NO_REAL_CHANGE>
   rvl:   <N> cells changed across <M> aligned rows   (only if REAL_CHANGE)
@@ -127,7 +142,11 @@ Every successful run prints exactly:
   verify: OK
 ```
 
-Refusals print the structured envelope from the failing tool to stderr and exit 2.
+Refusal paths exit 2 and print the structured envelope from the failing tool to stderr. Common refusals:
+
+- `shape` `E_DIALECT` — empty file or undetectable delimiter; pass `--delimiter comma` (or appropriate)
+- `pack seal` `E_IO` — `--out` directory already exists and is non-empty; pick a fresh dir
+- `rvl` `E_REFUSAL` — schema or alignment problem too severe to produce a verdict
 
 ## What you got
 
@@ -144,10 +163,11 @@ The output directory contains:
 
 ## Trigger phrases
 
-- "Did this CSV actually change?"
+- "Did these numbers actually change between these two CSVs?"
 - "Diff these two CSVs and seal the result"
-- "Generate a receipt for this loan tape comparison"
+- "Reconcile this report against this export"
 - "Verifiable CSV diff"
+- "Generate a receipt for this comparison"
 - "csv-receipts <old> <new>"
 
 ## What's next

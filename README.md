@@ -40,7 +40,7 @@ ln -s ~/.claude/skills/receipts-bundle/skills/receipts-flywheel ~/.claude/skills
 
 The skills work fine without this. It's a privacy enhancement for people who want a hard guarantee that no AI model in their session reads the raw data.
 
-If you want it, an interactive setup script walks you through three stages — install the `veil` binary, register the agent-harness hooks, enable the `data.tabular` pack — asking for confirmation before each:
+If you want it, an interactive setup script walks you through three stages — install the `veil` binary, register the agent-harness hooks, drop a conservative starter config — asking for confirmation before each:
 
 ```bash
 ~/.claude/skills/receipts-bundle/shared/scripts/setup-veil.sh

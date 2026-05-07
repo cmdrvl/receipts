@@ -82,22 +82,32 @@ if [[ -f "$CONFIG_FILE" ]]; then
   ok "config exists: $CONFIG_FILE"
   echo "    edit it directly to add protected paths or authorized spine tools."
 else
-  if confirm "Drop a starter config at $CONFIG_FILE? (protects CSV/TSV/parquet by default; authorizes spine tools)"; then
+  echo
+  echo "    NOTE: this is your USER-LEVEL config (~/.config/veil/config.toml)."
+  echo "    Patterns here apply to every Claude Code session on this machine."
+  echo "    For per-project rules, drop a .veil.toml at the project root instead."
+  echo
+  if confirm "Drop a conservative starter config at $CONFIG_FILE?"; then
     mkdir -p "$CONFIG_DIR"
     cat > "$CONFIG_FILE" <<'EOF'
 # veil config — written by receipts setup-veil.sh
-# Edit this file to control which paths are sensitive and which tools are
-# authorized to read them as subprocesses.
+# This is a USER-LEVEL config — patterns here apply across every project.
+# Keep this file conservative. Add aggressive globs in a project-level
+# .veil.toml at the project root instead.
 
 [sensitivity]
 # Glob patterns for files veil should treat as sensitive.
-# Paths matching these are blocked from direct Read/Grep/Bash exposure.
+# These defaults match common tabular-data directory conventions but do
+# NOT blanket-protect "*.csv" anywhere on disk — that would block legitimate
+# reads of documentation samples, fixture data, etc. across all your work.
+# Add your own globs here; or override in a project-level .veil.toml.
 protected = [
-    "*.csv",
-    "*.tsv",
-    "*.parquet",
-    "data/**",
-    "exports/**",
+    "**/data/**/*.csv",
+    "**/data/**/*.tsv",
+    "**/data/**/*.parquet",
+    "**/exports/**/*.csv",
+    "**/exports/**/*.tsv",
+    "**/private/**",
 ]
 
 [spine]
@@ -113,7 +123,8 @@ authorized_tools = [
 default = "deny"
 audit_log = true
 EOF
-    ok "wrote starter config to $CONFIG_FILE"
+    ok "wrote conservative starter to $CONFIG_FILE"
+    echo "    edit it to add project-specific patterns, or use .veil.toml per project."
   else
     warn "skipped — no config written. veil will use built-in defaults until you create one."
   fi
