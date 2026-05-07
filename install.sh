@@ -169,10 +169,10 @@ if [[ "${SKIP_SPINE_INSTALL:-0}" == "1" ]]; then
   say "skipping spine install (SKIP_SPINE_INSTALL=1)"
 else
   say "installing cmdrvl spine tools via brew (idempotent)"
-  if [[ -x "$BUNDLE_DIR/skills/receipts-csv/scripts/install-spine.sh" ]]; then
+  if [[ -f "$BUNDLE_DIR/skills/receipts-csv/scripts/install-spine.sh" ]]; then
     bash "$BUNDLE_DIR/skills/receipts-csv/scripts/install-spine.sh"
   else
-    warn "install-spine.sh not found or not executable — skipping. Run it manually:"
+    warn "install-spine.sh not found — skipping. Run it manually once available:"
     warn "  bash $BUNDLE_DIR/skills/receipts-csv/scripts/install-spine.sh"
   fi
 fi

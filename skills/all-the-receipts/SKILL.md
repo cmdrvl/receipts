@@ -61,7 +61,7 @@ When the user invokes this skill, decide based on what they provide:
 The bundled sample is a marketing channel spend reconciliation — what your agency reported vs. what hit the bank. Did the spend really shift the way they say it did?
 
 ```bash
-./scripts/run-receipt.sh \
+bash scripts/run-receipt.sh \
   ./assets/channel-spend/agency-report.csv \
   ./assets/channel-spend/bank-statement.csv \
   --key channel \
@@ -94,7 +94,7 @@ The receipt is a sealed claim about what changed. You can keep it, share it, or 
 ### Run against your own CSVs
 
 ```bash
-./scripts/run-receipt.sh <old.csv> <new.csv> --key <id_column> --out <output_dir>
+bash scripts/run-receipt.sh <old.csv> <new.csv> --key <id_column> --out <output_dir>
 ```
 
 `--key` is required for keyed alignment (recommended). Without it, rows align by position.
@@ -112,8 +112,8 @@ Same pipeline, native PowerShell — no Git Bash, WSL2, or Cygwin needed.
 The skill needs the spine tools (`shape`, `rvl`, `pack`). One command installs everything:
 
 ```bash
-./scripts/install-spine.sh        # macOS / Linux (Homebrew)
-./scripts/install-spine.ps1       # Windows (PowerShell)
+bash scripts/install-spine.sh           # macOS / Linux (Homebrew)
+pwsh scripts/install-spine.ps1          # Windows (PowerShell)
 ```
 
 Idempotent. Safe to re-run. Skips already-installed tools. macOS / Linux requires Homebrew; manual binary install instructions print if `brew` is missing. Windows downloads pinned binaries directly from each tool's GitHub releases.
@@ -121,7 +121,7 @@ Idempotent. Safe to re-run. Skips already-installed tools. macOS / Linux require
 To check what's already installed:
 
 ```bash
-./scripts/check-spine.sh
+bash scripts/check-spine.sh
 ```
 
 ## Optional: keep CSV bytes out of the model context
@@ -131,7 +131,7 @@ The skill works fine without this. It's an opt-in privacy enhancement.
 If you'd like to make sure your CSV data never enters the model's context (only the deterministic tool output does), install and configure `veil` — the cmdrvl data-exfiltration guard for AI coding agents. The bundled setup script walks you through it interactively:
 
 ```bash
-./scripts/setup-veil.sh
+bash scripts/setup-veil.sh
 ```
 
 It checks each stage (binary install, harness hooks, starter config), asks for confirmation before changing anything, and skips steps that are already done. Pass `--yes` for unattended runs.

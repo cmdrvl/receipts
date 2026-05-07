@@ -26,15 +26,25 @@ jobs:
           # Both skills must be self-contained — vendored copies of the
           # spine-install + veil scripts so each skill works standalone
           # when symlinked into a harness (or pushed to jeffreys-skills.md).
+          # Note: scripts are NOT executable. jeffreys-skills.md rejects
+          # executable files at upload, so skills invoke their scripts via
+          # `bash scripts/<name>.sh` / `pwsh scripts/<name>.ps1` instead.
           for s in receipts-csv all-the-receipts; do
-            test -x skills/$s/scripts/check-spine.sh
-            test -x skills/$s/scripts/install-spine.sh
+            test -f skills/$s/scripts/check-spine.sh
+            test -f skills/$s/scripts/install-spine.sh
             test -f skills/$s/scripts/install-spine.ps1
-            test -x skills/$s/scripts/setup-veil.sh
-            test -x skills/$s/scripts/run-receipt.sh
+            test -f skills/$s/scripts/setup-veil.sh
+            test -f skills/$s/scripts/run-receipt.sh
             test -f skills/$s/scripts/run-receipt.ps1
             test -f skills/$s/assets/channel-spend/agency-report.csv
             test -f skills/$s/assets/channel-spend/bank-statement.csv
+            # Guard against an exec bit sneaking back in (would break jsm push).
+            for f in skills/$s/scripts/*.sh skills/$s/scripts/*.ps1; do
+              if [[ -x "$f" ]]; then
+                echo "ERROR: $f is executable; jsm push would reject it"
+                exit 1
+              fi
+            done
           done
 
           # Drift check: vendored copies must match between the two skills.
@@ -98,15 +108,15 @@ jobs:
 
       - name: Install spine tools via install-spine.sh
         run: |
-          ./skills/receipts-csv/scripts/install-spine.sh
+          bash skills/receipts-csv/scripts/install-spine.sh
           shape --version
           rvl --version
           pack --version
 
       - name: check-spine.sh reports all required tools installed
         run: |
-          ./skills/receipts-csv/scripts/check-spine.sh
-          ./skills/receipts-csv/scripts/check-spine.sh | python3 -c '
+          bash skills/receipts-csv/scripts/check-spine.sh
+          bash skills/receipts-csv/scripts/check-spine.sh | python3 -c '
           import json, sys
           d = json.load(sys.stdin)
           missing = [t["name"] for t in d["tools"] if t["required"] and not t["installed"]]
@@ -119,7 +129,7 @@ jobs:
       - name: Run bundled demo end-to-end (receipts-csv)
         run: |
           OUT="${{ runner.temp }}/ci-receipt-csv"
-          ./skills/receipts-csv/scripts/run-receipt.sh \
+          bash skills/receipts-csv/scripts/run-receipt.sh \
             ./skills/receipts-csv/assets/channel-spend/agency-report.csv \
             ./skills/receipts-csv/assets/channel-spend/bank-statement.csv \
             --key channel \
@@ -135,7 +145,7 @@ jobs:
           # all-the-receipts ships its own copy of the CSV runner and
           # sample. Catch drift between the two skills here.
           OUT="${{ runner.temp }}/ci-receipt-atr"
-          ./skills/all-the-receipts/scripts/run-receipt.sh \
+          bash skills/all-the-receipts/scripts/run-receipt.sh \
             ./skills/all-the-receipts/assets/channel-spend/agency-report.csv \
             ./skills/all-the-receipts/assets/channel-spend/bank-statement.csv \
             --key channel \
@@ -157,7 +167,7 @@ jobs:
 
           # Non-existent file
           set +e
-          ./skills/receipts-csv/scripts/run-receipt.sh /nope-old.csv /nope-new.csv --key x --out "$TMP/r1" >/dev/null 2>&1
+          bash skills/receipts-csv/scripts/run-receipt.sh /nope-old.csv /nope-new.csv --key x --out "$TMP/r1" >/dev/null 2>&1
           rc=$?
           set -e
           [[ $rc -eq 2 ]] || { echo "expected exit 2 for missing file, got $rc"; exit 1; }
@@ -168,9 +178,9 @@ jobs:
           mkdir -p "$COLLISION"
           touch "$COLLISION/something"
           set +e
-          ./skills/receipts-csv/scripts/run-receipt.sh \
-            ./skills/receipts-csv/assets/channel-spend/agency-report.csv \
-            ./skills/receipts-csv/assets/channel-spend/bank-statement.csv \
+          bash skills/receipts-csv/scripts/run-receipt.sh \
+            skills/receipts-csv/assets/channel-spend/agency-report.csv \
+            skills/receipts-csv/assets/channel-spend/bank-statement.csv \
             --key channel --out "$COLLISION" > /tmp/wrapper.out 2>&1
           rc=$?
           set -e
