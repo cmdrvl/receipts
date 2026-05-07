@@ -61,8 +61,9 @@ function Install-SpineBinary {
     }
     $url = "https://github.com/cmdrvl/$Tool/releases/download/v$Version/$assetName"
 
-    $tmpZip = Join-Path $env:TEMP "$Tool-$Version-receipts.zip"
-    $tmpDir = Join-Path $env:TEMP "$Tool-$Version-receipts-extract"
+    $tmpRoot = [System.IO.Path]::GetTempPath()
+    $tmpZip = Join-Path $tmpRoot "$Tool-$Version-receipts.zip"
+    $tmpDir = Join-Path $tmpRoot "$Tool-$Version-receipts-extract"
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $tmpZip, $tmpDir
 
     Say "downloading $Tool v$Version"
