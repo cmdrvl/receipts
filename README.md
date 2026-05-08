@@ -13,7 +13,7 @@ This repo hosts two free, MIT-licensed skills that wrap the [cmdrvl spine](https
 | **[receipts-csv](skills/receipts-csv/)** | shipping | You have two CSVs and want a hash-verified receipt of what changed. Focused, single-purpose. |
 | **[all-the-receipts](skills/all-the-receipts/)** | shipping (CSV mode), expanding | You want one skill that mines receipts from any pair of artifacts. CSV mode runs the same pipeline as `receipts-csv` today; PDF / SEC filings / loan tapes / position files land as flywheel-paired modes ship. |
 
-Both run on the same spine: `shape` (structural gate) → `rvl` (numeric verdict) → `pack seal` (content-addressed evidence pack). Every artifact has a SHA-256 identity. Every refusal is structured. `pack verify` revalidates the chain offline — no network, no catalog, no trust in the producer.
+Both run on the same spine: `shape` (structural gate) → `rvl` (numeric verdict) → `pack seal` (content-addressed evidence pack). Every artifact has a SHA-256 identity. Every stop condition is structured. `pack verify` revalidates the chain offline — no network, no catalog, no trust in the producer.
 
 ## Install
 

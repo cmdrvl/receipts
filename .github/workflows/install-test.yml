@@ -156,7 +156,7 @@ jobs:
           test -f "$OUT/rvl.report.json"
           pack verify "$OUT" --no-witness
 
-      - name: Refusal paths exit with code 2
+      - name: No-receipt paths exit with code 2
         run: |
           echo "pack version: $(pack --version)"
           echo "shape version: $(shape --version)"
@@ -172,6 +172,26 @@ jobs:
           set -e
           [[ $rc -eq 2 ]] || { echo "expected exit 2 for missing file, got $rc"; exit 1; }
           echo "ok — missing file: exit 2"
+
+          # Shape incompatibility — should stop before rvl and exit 2
+          cat > "$TMP/incompat-old.csv" <<'CSV'
+          id,a
+          1,2
+          CSV
+          cat > "$TMP/incompat-new.csv" <<'CSV'
+          other,b
+          1,2
+          CSV
+          set +e
+          bash skills/receipts-csv/scripts/run-receipt.sh \
+            "$TMP/incompat-old.csv" "$TMP/incompat-new.csv" \
+            --key id --out "$TMP/r-shape-incompat" > "$TMP/shape-incompat.out" 2>&1
+          rc=$?
+          set -e
+          [[ $rc -eq 2 ]] || { echo "expected exit 2 for shape incompatibility, got $rc"; cat "$TMP/shape-incompat.out"; exit 1; }
+          grep -q "shape INCOMPATIBLE" "$TMP/shape-incompat.out" || { echo "missing shape incompatibility message"; cat "$TMP/shape-incompat.out"; exit 1; }
+          ! grep -q "==> rvl" "$TMP/shape-incompat.out" || { echo "rvl ran after shape incompatibility"; cat "$TMP/shape-incompat.out"; exit 1; }
+          echo "ok — shape incompatibility: exit 2 before rvl"
 
           # Pre-existing non-empty output dir — should fail at pack seal
           COLLISION="$TMP/already-exists"
@@ -270,7 +290,7 @@ jobs:
           pack verify $out --no-witness
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
-      - name: Refusal paths exit non-zero
+      - name: No-receipt paths exit non-zero
         run: |
           $env:Path = "$env:Path;$env:USERPROFILE\.cmdrvl\bin"
           $tmp = $env:RUNNER_TEMP
@@ -290,6 +310,31 @@ jobs:
             exit 1
           }
           Write-Host "ok — missing file: exit 2"
+
+          # Shape incompatibility — should stop before rvl and exit 2
+          $incompatOld = Join-Path $tmp "incompat-old.csv"
+          $incompatNew = Join-Path $tmp "incompat-new.csv"
+          $shapeOut = Join-Path $tmp "shape-incompat.out"
+          Set-Content -Path $incompatOld -Value @("id,a", "1,2")
+          Set-Content -Path $incompatNew -Value @("other,b", "1,2")
+          pwsh -NoProfile -File $script $incompatOld $incompatNew -Key id -Out (Join-Path $tmp "r-shape-incompat") *> $shapeOut
+          if ($LASTEXITCODE -ne 2) {
+            Write-Error "expected exit 2 for shape incompatibility, got $LASTEXITCODE"
+            Get-Content $shapeOut
+            exit 1
+          }
+          $shapeContent = Get-Content $shapeOut -Raw
+          if ($shapeContent -notmatch "shape INCOMPATIBLE") {
+            Write-Error "missing shape incompatibility message"
+            Get-Content $shapeOut
+            exit 1
+          }
+          if ($shapeContent -match "==> rvl") {
+            Write-Error "rvl ran after shape incompatibility"
+            Get-Content $shapeOut
+            exit 1
+          }
+          Write-Host "ok — shape incompatibility: exit 2 before rvl"
 
           # Pack collision: pre-existing non-empty output dir
           $collision = Join-Path $tmp "already-exists"

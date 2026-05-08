@@ -6,8 +6,8 @@
 #
 # Output: prints the pack_id and the path to the sealed pack on stdout.
 # Exit codes:
-#   0  pack created (NO_CHANGE or REAL_CHANGE; both are valid receipts)
-#   2  refusal (shape incompatibility, etc.) — see refusal envelope on stdout
+#   0  pack created (NO_REAL_CHANGE or REAL_CHANGE; both are valid receipts)
+#   2  no receipt produced (shape INCOMPATIBLE or tool refusal/error) — see stderr
 
 set -euo pipefail
 
@@ -64,8 +64,20 @@ if [[ -n "$OUT" ]]; then
 fi
 
 echo "==> shape"
-if ! shape "$OLD" "$NEW" "${KEY_FLAG[@]+"${KEY_FLAG[@]}"}" --json --no-witness > "$WORK/shape.report.json"; then
-  echo "shape REFUSAL — structural incompatibility:" >&2
+SHAPE_EXIT=0
+shape "$OLD" "$NEW" "${KEY_FLAG[@]+"${KEY_FLAG[@]}"}" --json --no-witness > "$WORK/shape.report.json" || SHAPE_EXIT=$?
+if [[ $SHAPE_EXIT -eq 1 ]]; then
+  echo "shape INCOMPATIBLE — not comparable; stopping before rvl:" >&2
+  cat "$WORK/shape.report.json" >&2
+  exit 2
+fi
+if [[ $SHAPE_EXIT -eq 2 ]]; then
+  echo "shape REFUSAL:" >&2
+  cat "$WORK/shape.report.json" >&2
+  exit 2
+fi
+if [[ $SHAPE_EXIT -ne 0 ]]; then
+  echo "shape ERROR (exit $SHAPE_EXIT):" >&2
   cat "$WORK/shape.report.json" >&2
   exit 2
 fi
@@ -76,6 +88,11 @@ RVL_EXIT=0
 rvl "$OLD" "$NEW" "${KEY_FLAG[@]+"${KEY_FLAG[@]}"}" --json --no-witness > "$WORK/rvl.report.json" || RVL_EXIT=$?
 if [[ $RVL_EXIT -eq 2 ]]; then
   echo "rvl REFUSAL:" >&2
+  cat "$WORK/rvl.report.json" >&2
+  exit 2
+fi
+if [[ $RVL_EXIT -ne 0 && $RVL_EXIT -ne 1 ]]; then
+  echo "rvl ERROR (exit $RVL_EXIT):" >&2
   cat "$WORK/rvl.report.json" >&2
   exit 2
 fi

@@ -23,7 +23,7 @@
 .NOTES
   Exit codes:
     0  pack created (NO_REAL_CHANGE or REAL_CHANGE; both are valid receipts)
-    2  refusal — see structured envelope on stderr
+    2  no receipt produced (shape INCOMPATIBLE or tool refusal/error) — see stderr
 #>
 
 param(
@@ -76,8 +76,19 @@ try {
     Write-Host "==> shape"
     $shapeArgs = @($Old, $New) + $keyArgs + @("--json", "--no-witness")
     & shape @shapeArgs > $shapeReport
-    if ($LASTEXITCODE -ne 0) {
-        Write-Stderr "shape REFUSAL — structural incompatibility:"
+    $shapeExit = $LASTEXITCODE
+    if ($shapeExit -eq 1) {
+        Write-Stderr "shape INCOMPATIBLE — not comparable; stopping before rvl:"
+        Get-Content $shapeReport | ForEach-Object { Write-Stderr $_ }
+        exit 2
+    }
+    if ($shapeExit -eq 2) {
+        Write-Stderr "shape REFUSAL:"
+        Get-Content $shapeReport | ForEach-Object { Write-Stderr $_ }
+        exit 2
+    }
+    if ($shapeExit -ne 0) {
+        Write-Stderr "shape ERROR (exit $shapeExit):"
         Get-Content $shapeReport | ForEach-Object { Write-Stderr $_ }
         exit 2
     }
@@ -91,6 +102,11 @@ try {
     $rvlExit = $LASTEXITCODE
     if ($rvlExit -eq 2) {
         Write-Stderr "rvl REFUSAL:"
+        Get-Content $rvlReport | ForEach-Object { Write-Stderr $_ }
+        exit 2
+    }
+    if (($rvlExit -ne 0) -and ($rvlExit -ne 1)) {
+        Write-Stderr "rvl ERROR (exit $rvlExit):"
         Get-Content $rvlReport | ForEach-Object { Write-Stderr $_ }
         exit 2
     }

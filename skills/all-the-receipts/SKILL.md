@@ -23,11 +23,11 @@ distribution: public
 
 Three deterministic tools chained together:
 
-1. **`shape`** — structural compatibility gate. Reports `COMPATIBLE` or `REFUSAL`. Catches missing key columns, undetectable delimiters, and type-class drift. Tolerates added columns on either side (they don't block comparison; the union is recorded for the receipt).
+1. **`shape`** — structural compatibility gate. Reports `COMPATIBLE`, `INCOMPATIBLE`, or `REFUSAL`. Catches missing key columns, undetectable delimiters, and type-class drift. Tolerates added columns on either side (they don't block comparison; the union is recorded for the receipt).
 2. **`rvl`** — numeric change verdict: `REAL_CHANGE`, `NO_REAL_CHANGE`, or `REFUSAL`. Reveals the smallest set of *numeric* cells that explain what changed. String/categorical changes show up in the report data but don't trigger the verdict — `rvl` is scoped to numeric movement on purpose.
 3. **`pack seal`** — bundle the reports into a content-addressed evidence pack. `pack verify` checks integrity offline; no network, no catalog, no trust.
 
-Every artifact has a SHA-256 identity. Every refusal has a structured code. Reproducible in 30 seconds against the bundled sample.
+Every artifact has a SHA-256 identity. Every stop condition has a structured code or report. Reproducible in 30 seconds against the bundled sample.
 
 ## Modes
 
@@ -56,7 +56,7 @@ When the user invokes this skill, decide based on what they provide:
 
 > Always invoke the script via interpreter (`bash <script>` or `pwsh <script>`). Files in this skill are intentionally non-executable — direct `./scripts/foo.sh` invocation will fail with `Permission denied`.
 
-6. **Refusal from any stage** — surface the structured refusal envelope verbatim. Do not paraphrase or "fix" it; the refusal codes are the contract.
+6. **Stop/refusal from any stage** — surface the structured envelope or report verbatim. Do not paraphrase or "fix" it; `shape INCOMPATIBLE` stops before `rvl`, and refusal codes are the contract.
 
 ## Quick start
 
@@ -168,11 +168,21 @@ Every successful run prints exactly:
   verify: OK
 ```
 
-Refusal paths exit 2 and print the structured envelope from the failing tool to stderr. Common refusals:
+No-receipt paths exit 2 and print the structured envelope or report from the failing tool to stderr. `shape INCOMPATIBLE` is a normal stop condition, not a generic refusal: do not run `rvl` after it. Common stops:
 
 - `shape` `E_DIALECT` — empty file or undetectable delimiter; pass `--delimiter comma` (or appropriate)
+- `shape` `INCOMPATIBLE` — schemas or selected keys cannot be compared; choose a better key or normalize the inputs first
 - `pack seal` `E_IO` — `--out` directory already exists and is non-empty; pick a fresh dir
 - `rvl` `E_REFUSAL` — schema or alignment problem too severe to produce a verdict
+
+## Spine maintenance contract
+
+This skill is self-contained for public distribution, so keep the contract here in sync with the spine tools instead of linking to a local-only skill.
+
+- Prefer `<tool> --describe` or the checked-out `operator.json` over prose when updating command examples.
+- Run `shape` before `rvl`; `shape` exit `1` / `INCOMPATIBLE` stops before `rvl` and is not a refusal.
+- Treat `rvl` exit `1` / `REAL_CHANGE` as a valid receipt path; only exit `2` is refusal or CLI error.
+- Seal durable evidence with `pack seal` and verify it with `pack verify`.
 
 ## What you got
 
