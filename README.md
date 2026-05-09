@@ -48,6 +48,8 @@ Run the bundled demo with `run-receipt.ps1`:
 
 Prereq: [Git for Windows](https://git-scm.com/download/win) (provides `git`).
 
+The bundled `check-spine.sh` inventory also reports `doctor_health`, `doctor_health_json`, and `doctor_capabilities_json` for installed spine tools. This helps agents spot stale or non-standard local binaries before running a receipt.
+
 ### Platform coverage
 
 | Platform | Spine binaries | Install path |

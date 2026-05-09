@@ -128,6 +128,8 @@ To check what's already installed:
 bash scripts/check-spine.sh
 ```
 
+The check also reports `doctor_health`, `doctor_health_json`, and `doctor_capabilities_json` for installed tools, so agents can tell whether a local spine install has the current diagnostics surface.
+
 ## Optional: keep CSV bytes out of the model context
 
 The skill works fine without this. It's an opt-in privacy enhancement.
@@ -180,6 +182,7 @@ No-receipt paths exit 2 and print the structured envelope or report from the fai
 This skill is self-contained for public distribution, so keep the contract here in sync with the spine tools instead of linking to a local-only skill.
 
 - Prefer `<tool> --describe` or the checked-out `operator.json` over prose when updating command examples.
+- Use `bash scripts/check-spine.sh` for version inventory and doctor health before telling a user their local spine install is current.
 - Run `shape` before `rvl`; `shape` exit `1` / `INCOMPATIBLE` stops before `rvl` and is not a refusal.
 - Treat `rvl` exit `1` / `REAL_CHANGE` as a valid receipt path; only exit `2` is refusal or CLI error.
 - Seal durable evidence with `pack seal` and verify it with `pack verify`.

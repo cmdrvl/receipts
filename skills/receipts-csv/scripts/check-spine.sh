@@ -18,15 +18,54 @@ REQUIRED=(shape rvl pack)
 # (PDF, filings, tape) as those land.
 OPTIONAL=(veil vacuum hashbytes fingerprint profile lock canon)
 
+doctor_text_health() {
+  local tool="$1"
+
+  if "$tool" doctor health >/dev/null 2>&1; then
+    printf 'pass'
+  elif "$tool" doctor --help >/dev/null 2>&1; then
+    printf 'fail'
+  else
+    printf 'unavailable'
+  fi
+}
+
+doctor_json_health() {
+  local tool="$1"
+
+  if "$tool" doctor health --json >/dev/null 2>&1; then
+    printf 'pass'
+  elif "$tool" doctor --help >/dev/null 2>&1; then
+    printf 'fail'
+  else
+    printf 'unavailable'
+  fi
+}
+
+doctor_json_capabilities() {
+  local tool="$1"
+
+  if "$tool" doctor capabilities --json >/dev/null 2>&1; then
+    printf 'pass'
+  elif "$tool" doctor --help >/dev/null 2>&1; then
+    printf 'fail'
+  else
+    printf 'unavailable'
+  fi
+}
+
 emit_tool() {
   local tool="$1" required="$2"
   if command -v "$tool" >/dev/null 2>&1; then
-    local v
+    local v health health_json capabilities_json
     v=$("$tool" --version 2>/dev/null | head -1 | awk '{print $NF}')
-    printf '    {"name": "%s", "installed": true, "version": "%s", "required": %s}' \
-      "$tool" "$v" "$required"
+    health=$(doctor_text_health "$tool")
+    health_json=$(doctor_json_health "$tool")
+    capabilities_json=$(doctor_json_capabilities "$tool")
+    printf '    {"name": "%s", "installed": true, "version": "%s", "required": %s, "doctor_health": "%s", "doctor_health_json": "%s", "doctor_capabilities_json": "%s"}' \
+      "$tool" "$v" "$required" "$health" "$health_json" "$capabilities_json"
   else
-    printf '    {"name": "%s", "installed": false, "version": null, "required": %s}' \
+    printf '    {"name": "%s", "installed": false, "version": null, "required": %s, "doctor_health": null, "doctor_health_json": null, "doctor_capabilities_json": null}' \
       "$tool" "$required"
   fi
 }

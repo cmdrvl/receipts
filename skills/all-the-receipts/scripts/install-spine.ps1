@@ -25,9 +25,9 @@ $ErrorActionPreference = "Stop"
 # Pinned tool versions. Keep in sync with the bash install-spine.sh in this dir.
 # REQUIRED set. The release-asset name is "<tool>-<version>-x86_64-pc-windows-msvc.zip".
 $Versions = @{
-    "shape" = "0.5.0"
-    "rvl"   = "0.5.1"
-    "pack"  = "0.3.0"
+    "shape" = "0.6.0"
+    "rvl"   = "0.6.0"
+    "pack"  = "0.4.0"
 }
 
 function Say  { param($Msg) Write-Host "==> $Msg" -ForegroundColor Cyan }
